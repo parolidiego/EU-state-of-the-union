@@ -1,0 +1,379 @@
+---
+title: "EU state of the Union"
+output: html_document
+date: ""
+---
+
+# Library 
+
+```{r}
+rm(list = ls())
+library(tidyverse)
+library(tidytext)
+library(wordcloud)
+# devtools::install_github("lchiffon/wordcloud2")
+# library(wordcloud2)
+```
+
+# Loading data 
+
+```{r}
+speech_2010 <- read_file("speeches/2010.txt") 
+speech_2011 <- read_file("speeches/2011.txt")
+speech_2012 <- read_file("speeches/2012.txt") 
+speech_2013 <- read_file("speeches/2013.txt") 
+speech_2015 <- read_file("speeches/2015.txt")
+speech_2016 <- read_file("speeches/2016.txt") 
+speech_2017 <- read_file("speeches/2017.txt") 
+speech_2018 <- read_file("speeches/2018.txt") 
+speech_2020 <- read_file("speeches/2020.txt") 
+speech_2021 <- read_file("speeches/2021.txt") 
+speech_2022 <- read_file("speeches/2022.txt") 
+speech_2023 <- read_file("speeches/2023.txt") 
+
+speeches <- tibble(
+  year = c(2010, 2011, 2012, 2013, 2015, 2016, 2017, 2018, 2020, 2021, 2022, 2023),
+  text = c(
+    speech_2010, speech_2011, speech_2012, speech_2013,
+    speech_2015, speech_2016, speech_2017, speech_2018,
+    speech_2020, speech_2021, speech_2022, speech_2023))
+speeches <- speeches |> 
+  mutate(president = case_when(
+    year %in% c(2010, 2011, 2012, 2013) ~ "Barroso",
+    year %in% c(2015, 2016, 2017, 2018) ~ "Juncker",
+    year %in% c(2020, 2021, 2022, 2023) ~ "von der Leyen"))
+```
+
+# Working
+
+```{r}
+tokenized_speeches <- speeches |> 
+  unnest_tokens(word,text, token="words")
+
+stop_words <- stop_words
+
+filtered_speeches <- tokenized_speeches |> 
+  anti_join(stop_words, by = "word")
+```
+
+
+```{r}
+filtered_speeches |> 
+  count(word, sort = TRUE) 
+
+filtered_speeches |> 
+  count(word, sort = TRUE) |> 
+  filter(n > 100) |>  
+  ggplot(aes(n, reorder(word, n))) +
+  geom_col() +
+  labs(y = NULL)
+
+filtered_speeches |> 
+  group_by(president) |> 
+  count(word, sort = TRUE) |> 
+  slice_head(n = 5)
+
+filtered_speeches |> 
+  group_by(year) |> 
+  count(word, sort = TRUE) |> 
+  slice_head(n = 3)
+
+frequency <- filtered_speeches |> 
+  group_by(president) |> 
+  count(word) |> 
+  mutate(proportion = n / sum(n)) |> 
+  ungroup() |> 
+  select(-n) |> 
+  pivot_wider(names_from = president, 
+              values_from = proportion) |> 
+  mutate(avg_proportion = rowMeans(across(c("Barroso", "Juncker", "von der Leyen")), 
+                                   na.rm = TRUE)) |>
+  arrange(desc(avg_proportion))
+frequency
+
+# Correlation?
+```
+
+### Wordcloud
+
+```{r}
+filtered_speeches |> 
+  count(word, sort = TRUE) |> 
+  with(wordcloud(word, n, colors = brewer.pal(4, "Accent"), max.words = 100))
+# change color palette
+
+filtered_speeches |> 
+  filter(!word %in% c("european", "europe", "eu", "union", "commision")) |>
+  count(word, sort = TRUE) |> 
+  filter(n > 60) |> 
+  with(wordcloud(word, n, colors = brewer.pal(4, "Accent")))
+```
+
+
+## Sentiment analysis
+
+```{r}
+get_sentiments("afinn")
+get_sentiments("nrc")
+get_sentiments("bing")
+```
+
+```{r}
+# Most common negative words by bing
+filtered_speeches |> 
+  left_join(get_sentiments("bing"), by = join_by(word)) |> 
+  filter(sentiment == "negative") |> 
+  count(word, sort = TRUE) |> 
+  slice_head(n = 10)
+
+# Most common positive words by bing
+filtered_speeches |> 
+  left_join(get_sentiments("bing"), by = join_by(word)) |> 
+  filter(sentiment == "positive") |> 
+  count(word, sort = TRUE) |> 
+  slice_head(n = 10)
+
+# Trust
+nrc_trust <- get_sentiments("nrc") |> 
+  filter(sentiment == "trust")
+filtered_speeches |> 
+  left_join(nrc_trust, by = join_by(word)) |> 
+  filter(sentiment == "trust") |> 
+  count(word, sort = TRUE) |> 
+  slice_head(n = 10)
+
+# Fear
+nrc_fear <- get_sentiments("nrc") |> 
+  filter(sentiment == "fear")
+filtered_speeches |> 
+  left_join(nrc_fear, by = join_by(word)) |> 
+  filter(sentiment == "fear") |> 
+  count(word, sort = TRUE) |> 
+  slice_head(n = 10)
+
+# Sadness
+nrc_sadness <- get_sentiments("nrc") |> 
+  filter(sentiment == "sadness")
+filtered_speeches |> 
+  left_join(nrc_sadness, by = join_by(word)) |> 
+  filter(sentiment == "sadness") |> 
+  count(word, sort = TRUE) |> 
+  slice_head(n = 10)
+
+# Anger
+nrc_anger <- get_sentiments("nrc") |> 
+  filter(sentiment == "anger")
+filtered_speeches |> 
+  left_join(nrc_anger, by = join_by(word)) |> 
+  filter(sentiment == "anger") |> 
+  count(word, sort = TRUE) |> 
+  slice_head(n = 10)
+
+# Surprise
+nrc_surprise <- get_sentiments("nrc") |> 
+  filter(sentiment == "surprise")
+filtered_speeches |> 
+  left_join(nrc_surprise, by = join_by(word)) |> 
+  filter(sentiment == "surprise") |> 
+  count(word, sort = TRUE) |> 
+  slice_head(n = 10)
+
+# Disgust
+nrc_disgust <- get_sentiments("nrc") |> 
+  filter(sentiment == "disgust")
+filtered_speeches |> 
+  left_join(nrc_disgust, by = join_by(word)) |> 
+  filter(sentiment == "disgust") |> 
+  count(word, sort = TRUE) |> 
+  slice_head(n = 10)
+
+# Joy
+nrc_joy <- get_sentiments("nrc") |> 
+  filter(sentiment == "joy")
+filtered_speeches |> 
+  left_join(nrc_joy, by = join_by(word)) |> 
+  filter(sentiment == "joy") |> 
+  count(word, sort = TRUE) |> 
+  slice_head(n = 10)
+
+# Anticipation
+nrc_anticipation <- get_sentiments("nrc") |> 
+  filter(sentiment == "anticipation")
+filtered_speeches |> 
+  left_join(nrc_anticipation, by = join_by(word)) |> 
+  filter(sentiment == "anticipation") |> 
+  count(word, sort = TRUE) |> 
+  slice_head(n = 10)
+```
+
+Do the speeches have a similar structure related to poisitivity and negativity?
+
+```{r}
+sentiment_chuncks <- filtered_speeches |>
+  mutate(year = as.factor(year)) |> 
+  group_by(year) |>
+  mutate(word_id = row_number(),
+         chunk = (word_id %/% 100) + 1) |> 
+  select(-word_id) |> 
+  left_join(get_sentiments("afinn"), by = "word") |>
+  group_by(year, chunk) |>                        
+  summarise(sentiment = sum(value, na.rm = TRUE),
+            .groups = "drop")
+
+ggplot(sentiment_chuncks, aes(x = chunk, y = sentiment, fill = year)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ year, ncol = 2, scales = "free_x")
+
+
+sentiment_chuncks <- filtered_speeches |>
+  mutate(year = as.factor(year)) |> 
+  group_by(year) |>
+  mutate(word_id = row_number(),
+         chunk = (word_id %/% 100) + 1) |> 
+  select(-word_id) |> 
+  left_join(get_sentiments("bing"), by = "word") |>
+  group_by(year, chunk) |>
+  count(sentiment) |> 
+  pivot_wider(names_from = sentiment, 
+              values_from = n, values_fill = 0) |>
+  select(-"NA") |> 
+  mutate(sentiment = positive - negative)
+
+ggplot(sentiment_chuncks, aes(x = chunk, y = sentiment, fill = year)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ year, ncol = 2, scales = "free_x")
+```
+
+## TF-IDF
+
+```{r}
+speeches_tf_idf <- filtered_speeches |> 
+  count(year, word, sort = TRUE) |> 
+  bind_tf_idf(term = word, document = year, n = n)
+
+speeches_tf_idf |>
+  arrange(desc(tf_idf))
+
+speeches_tf_idf |> 
+  group_by(year) |> 
+  slice_max(tf_idf)
+
+speeches_tf_idf |> 
+  mutate(president = case_when(
+    year %in% c(2010, 2011, 2012, 2013) ~ "Barroso",
+    year %in% c(2015, 2016, 2017, 2018) ~ "Juncker",
+    year %in% c(2020, 2021, 2022, 2023) ~ "von der Leyen")) |>
+  group_by(president) |> 
+  slice_max(tf_idf, n = 10)
+
+
+
+# Deleting some more words?
+```
+
+Zipf’s law as well?
+
+## Bigrams
+
+```{r}
+# Keeping all bigrams that are not 2 stopwords
+speeches_bigrams <- speeches |> 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2) |> 
+  separate(bigram, c("word1", "word2"), sep = " ") |>
+  filter(!(word1 %in% stop_words$word & word2 %in% stop_words$word))
+
+# Keeping only those where neither is a stopword
+speeches_bigrams <- speeches |> 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2) |> 
+  separate(bigram, c("word1", "word2"), sep = " ") |>
+  filter(!word1 %in% stop_words$word,
+         !word2 %in% stop_words$word) |> 
+  unite("bigram", "word1", "word2", sep = " ")
+
+# Which one should I use?
+```
+
+
+```{r}
+speeches_bigrams |> 
+  count(bigram, sort = TRUE)
+```
+
+
+```{r}
+bigrams_tf_idf <- speeches_bigrams |> 
+  count(year, bigram, sort = TRUE) |> 
+  bind_tf_idf(term = bigram, document = year, n = n) |> 
+  arrange(desc(tf_idf))
+```
+
+
+Correlation?
+
+Conditional n-grams?
+
+Use bigrams to see biases in sentiment analysis?
+
+## Trigrams
+
+```{r}
+speeches_trigrams <- speeches |> 
+  unnest_tokens(bigram, text, token = "ngrams", n = 3)
+```
+
+## DTM
+
+```{r}
+speeches_dtm <- filtered_speeches |>
+  count(year, word, sort = TRUE) |>
+  cast_dtm(document = year, term = word, value = n)
+
+speeches_dtm
+```
+
+## Topic modelling
+
+```{r}
+library(topicmodels)
+
+lda <- LDA(speeches_dtm, k = 5, control = list(seed = 1234))
+tidy(lda)
+
+top_terms <- lda |> 
+  tidy() |> 
+  group_by(topic) |> 
+  slice_max(beta, n = 10) |> 
+  ungroup() |> 
+  arrange(topic, -beta)
+
+top_terms
+
+# Repeat filtering out European, europe, union, commission, honourable
+stop_custom <- tibble(word = c("european", 
+                               "europe", 
+                               "eu", 
+                               "union", 
+                               "commission", 
+                               "honourable"))
+tidy_speeches <- speeches |>
+  unnest_tokens(word, text) |>
+  anti_join(stop_words) |>
+  anti_join(stop_custom) |>
+  count(year, word, sort = TRUE) |>
+  arrange(desc(n))
+
+speeches_dtm <- tidy_speeches |>
+  cast_dtm(document = year, term = word, value = n)
+speeches_dtm
+
+lda <- LDA(speeches_dtm, k = 5, control = list(seed = 1234))
+top_terms <- lda |> 
+  tidy() |> 
+  group_by(topic) |> 
+  slice_max(beta, n = 10) |> 
+  ungroup() |> 
+  arrange(topic, -beta)
+top_terms
+# Some more words might be needed to be filtered out
+```
+
