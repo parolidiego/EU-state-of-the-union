@@ -4,31 +4,48 @@ output: html_document
 date: ""
 ---
 
-# Library 
+# Introduction
+
+Each September, the President of the European Commission gives a speech in the plenary session of the European Parliament about last year's achievements and presents the priorities for the next one.
+
+In this assignment we will be applying some text mining techniques to extract useful information from speeches comprehended between 2010 and 2023. During this period, the European Commission had three different presidents, Barroso, Juncker and von der Leyen, so in order to know the similarities and differences between speeches by year and by president we are going to apply several text mining techniques. We'll perform sentiment analysis to compare positivity and negativity across speeches, we will use TF-IDF to determine the most distinctive words each year and lastly we will do topic modelling to classify the speeches depending on their theme.
+
+As an initial hypothesis we expect to have a big amount of similarities regarding the style and the words used between presidents because, although each one of them may have their particular style and some particular event to address, these type of discourses tend to follow a formal and structured scheme and consistently mention key policy areas.
+
+Moreover, in the sentiment analysis we expect to achieve greater negativity between 2010 and 2016 and in 2020-2022 because it was the period of the Eurozone debt crisis and the COVID-19 pandemic and the Ukraine war, respectively.
+
+Similarly we expect the main topics of the speeches to reflect these main challenges faced by the Union (financial crisis, Covid, Ukraine), as well as maybe a mentioning of Brexit.
+
+# Library
+
+Installing and loading packages.
 
 ```{r}
 rm(list = ls())
+# install.packages("tidyverse")
+# install.packages("tidytext")
+# install.packages("wordcloud")
+# install.packages("topicmodels")
+# install.packages("scales")
 library(tidyverse)
 library(tidytext)
 library(wordcloud)
 library(topicmodels)
 library(scales)
+
+
+# Probably will eventually delete this
 # devtools::install_github("lchiffon/wordcloud2")
 # library(wordcloud2)
 ```
-# Introduction
 
-Each September, the President of the European Commission gives a speech about last year's achievements and presents the priorities for the next one.
-
-In this assignment we will be applying some text mining techniques to extract useful information from speeches comprehended between 2010 and 2023. During this period, the European Commission had three different presidents, Barroso, Juncker and Von der Leyen, so in order to know the similarities and differences between speeches by year and by president we are going to perform a sentiment analysis to compare positivity and negativity across speeches, we will use TF-IDF to determine the most distinctive words each year and lastly we will do topic modelling to classify the speeches depending on their theme.
-
-As an initial hypothesis we will expect to have a big amount of similarities regarding the style and the words used between presidents because, although each one oh them may have their particular style, this type of discourse tend to follow a formal and structured scheme. 
-
-Moreover, in the sentiment analysis we expect to achieve greater negativity between 2010 and 2016 and in 2020 because it was the period of the Eurozone debt crisis and the COVID-19 pandemic, respectively.  
-
-# Loading data 
+# Loading data
 
 Here we read the speeches and we assign the year in which they were held and the president that delivered each of them.
+
+Note that some years are missing. These years correspond to European election years, during which the Commission and the Parliament are typically in transition and not yet fully in office.
+
+All the speeches have been obtained from the [European's Commission website](https://state-of-the-union.ec.europa.eu/index_en) and speeches' section headings or subheadings have been deleted.
 
 ```{r}
 speech_2010 <- read_file("speeches/2010.txt") 
@@ -58,34 +75,48 @@ speeches <- speeches |>
     year %in% c(2020, 2021, 2022, 2023) ~ "von der Leyen"))
 ```
 
-# Working
+# Pre-processing
 
-Since stop words do not add useful information to our analysis we re filtering them.
+Since stop words do not add useful information to our analysis we are filtering them.
 
 ```{r}
+# Tokenizing by word
 tokenized_speeches <- speeches |> 
   unnest_tokens(word,text, token="words")
 
 stop_words <- stop_words
 
+# Removing stopwords
 filtered_speeches <- tokenized_speeches |> 
   anti_join(stop_words, by = "word")
 ```
 
+# Analysis
+
+## Word frequency
+
+What are the most used words in the speeches?
 
 ```{r}
 filtered_speeches |> 
-  count(word, sort = TRUE) 
-
-filtered_speeches |> 
+  # Counting the words
   count(word, sort = TRUE) |> 
+  # Filtering only those used more than 100 times
   filter(n > 100) |>  
+  # Plotting the most used
   ggplot(aes(n, reorder(word, n))) +
-  geom_col() +
-  labs(y = NULL)
+  geom_col(fill = "blue") +
+  labs(title = "Most used words in EU State of the Union speeches 2010-2023",
+       y = NULL, 
+       x = "Number of times used") +
+  theme_minimal()
 ```
 
-In a first look, we can observe that the most used words are making reference to Europe, the European Union and the Commission. This also can be seen if we look at the most used words per president or per year.
+In a first look, we can observe that the most used words are making reference to Europe, the European Union and the Commission as well as to the European people to which these speeches are directed. Other words refer to key policy area mainly related with the economy.
+
+A curious presence is the word "honourable". Its presence is due to the fact that all Commission presidents to address the member of the European Parliament where the speech takes place use the expression "Honourable Members" (of the parliament). This expression is used repeatedly, often as the opening of sentences or at least of each section of the speech.
+
+We'll now focus on differences across years and presidents.
 
 ```{r}
 filtered_speeches |> 
@@ -148,7 +179,7 @@ cor.test(data = frequency[frequency$president == "Juncker",],
 
 In both cases the correlation is greater than 0.79, so we have demonstrated that the word frequency used in Barroso and Juncquer's speeches is quite similar to von der Leyen's. Additionally, Juncquer's speech is slightly more similar to von der Leyen's than Barroso's.
 
-### Wordcloud 
+### Wordcloud
 
 What could we say?
 
@@ -164,7 +195,6 @@ filtered_speeches |>
   filter(n > 60) |> 
   with(wordcloud(word, n, colors = brewer.pal(4, "Accent")))
 ```
-
 
 ## Sentiment analysis
 
@@ -183,7 +213,6 @@ filtered_speeches |>
   slice_head(n = 10)
 ```
 
-
 ```{r}
 # Most common positive words by bing
 filtered_speeches |> 
@@ -192,7 +221,6 @@ filtered_speeches |>
   count(word, sort = TRUE) |> 
   slice_head(n = 10)
 ```
-
 
 ```{r}
 # Trust
@@ -207,7 +235,6 @@ filtered_speeches |>
 # commission is put as a trust word
 ```
 
-
 ```{r}
 # Fear
 nrc_fear <- get_sentiments("nrc") |> 
@@ -218,7 +245,6 @@ filtered_speeches |>
   count(word, sort = TRUE) |> 
   slice_head(n = 10)
 ```
-
 
 ```{r}
 # Sadness
@@ -231,7 +257,6 @@ filtered_speeches |>
   slice_head(n = 10)
 ```
 
-
 ```{r}
 # Anger
 nrc_anger <- get_sentiments("nrc") |> 
@@ -242,7 +267,6 @@ filtered_speeches |>
   count(word, sort = TRUE) |> 
   slice_head(n = 10)
 ```
-
 
 ```{r}
 # Surprise
@@ -255,7 +279,6 @@ filtered_speeches |>
   slice_head(n = 10)
 ```
 
-
 ```{r}
 # Disgust
 nrc_disgust <- get_sentiments("nrc") |> 
@@ -267,7 +290,6 @@ filtered_speeches |>
   slice_head(n = 10)
 ```
 
-
 ```{r}
 # Joy
 nrc_joy <- get_sentiments("nrc") |> 
@@ -278,7 +300,6 @@ filtered_speeches |>
   count(word, sort = TRUE) |> 
   slice_head(n = 10)
 ```
-
 
 ```{r}
 # Anticipation
@@ -294,7 +315,6 @@ filtered_speeches |>
 ## Do the speeches have a similar structure related to positivity and negativity?
 
 After the frequency distribution analysis, we know that these presidents share a common style in terms of word frequency, but now we are going to check how positive or negative the speeches were. To do this we will be using two lexicons, AFINN that gives us the sentiment in a regression format, and Bing, which gives a the sentiment as a multiclass classification. We use both to check if there are not clear differences between using one or another to prevent any type of lexicon bias.
-
 
 ```{r}
 sentiment_chuncks <- filtered_speeches |>
@@ -332,9 +352,10 @@ ggplot(sentiment_chuncks, aes(x = chunk, y = sentiment, fill = year)) +
   geom_col(show.legend = FALSE) +
   facet_wrap(~ year, ncol = 2, scales = "free_x")
 ```
+
 By looking at both results, we can say that the speeches are predominantly positive. In this graph, it seems that the speech given in the year 2015 is the most negative, that was the first State of Union given by Juncquer and it was in the middle of the Refugee Crisis of Middle East, this situation added with the fact the the economic crisis was not finished yet provoked that the first part of his speech was pretty negative.
 
-Surprisingly, in the year 2020 the most common sentiment was positivity, in the middle of the pandemic the president of the European Commission opted for giving a more positive speech that could bring a little bit of hope in the middle of the disaster. 
+Surprisingly, in the year 2020 the most common sentiment was positivity, in the middle of the pandemic the president of the European Commission opted for giving a more positive speech that could bring a little bit of hope in the middle of the disaster.
 
 ### Most negative year
 
@@ -357,6 +378,7 @@ filtered_speeches %>%
   ungroup()
 
 ```
+
 The most negative year is 2013, it is the one that has a biggest ratio of negative words, in the previous graph 2015 seemed to be the most negative because it is the longest one and it is the one that has the biggest number of negative words. However, in relative terms 2013 is more negative. (We should comment if something particular happened in 2013, but we should also have into account that only 5% of the words are negative, all the speeches are clearly positive)
 
 ## TF-IDF
@@ -386,8 +408,7 @@ speeches_tf_idf |>
 
 ## Zip's Law
 
-To calculate the slope, should we change the rank that determines the middle section? 
-In the Juncker case, the straight line is not achieve until 50 it seems and the same happens in von der Leyen's case.
+To calculate the slope, should we change the rank that determines the middle section? In the Juncker case, the straight line is not achieve until 50 it seems and the same happens in von der Leyen's case.
 
 ```{r}
 speeches_tf_idf <- speeches_tf_idf |> 
@@ -430,7 +451,6 @@ freq_by_rank_barroso %>%
   scale_y_log10()
 ```
 
-
 ```{r}
 rank_subset <- freq_by_rank_barroso %>% 
   filter(rank < 500,
@@ -459,7 +479,6 @@ freq_by_rank_juncker %>%
   scale_y_log10()
 ```
 
-
 ```{r}
 rank_subset <- freq_by_rank_juncker %>% 
   filter(rank < 500,
@@ -468,7 +487,6 @@ rank_subset <- freq_by_rank_juncker %>%
 #we use the linear model function to find numeric coefficients of relationship between tf and rank
 lm(log10(tf) ~ log10(rank), data = rank_subset)
 ```
-
 
 ```{r}
 freq_by_rank_juncker %>% 
@@ -489,7 +507,6 @@ freq_by_rank_vonderleyen %>%
   scale_y_log10()
 ```
 
-
 ```{r}
 rank_subset <- freq_by_rank_vonderleyen %>% 
   filter(rank < 500,
@@ -498,7 +515,6 @@ rank_subset <- freq_by_rank_vonderleyen %>%
 #we use the linear model function to find numeric coefficients of relationship between tf and rank
 lm(log10(tf) ~ log10(rank), data = rank_subset)
 ```
-
 
 ```{r}
 freq_by_rank_vonderleyen %>% 
@@ -511,11 +527,7 @@ freq_by_rank_vonderleyen %>%
   scale_y_log10()
 ```
 
-
-
-
-
-Look at specific words over time? 
+Look at specific words over time?
 
 Key words in context? creating a corpus object then using kwic to see why some of the weird words with high tf-idf are used in those particular years
 
@@ -541,12 +553,10 @@ speeches_bigrams <- speeches |>
 # Which one should I use?
 ```
 
-
 ```{r}
 speeches_bigrams |> 
   count(bigram, sort = TRUE)
 ```
-
 
 ```{r}
 bigrams_tf_idf <- speeches_bigrams |> 
@@ -554,7 +564,6 @@ bigrams_tf_idf <- speeches_bigrams |>
   bind_tf_idf(term = bigram, document = year, n = n) |> 
   arrange(desc(tf_idf))
 ```
-
 
 Correlation?
 
@@ -581,7 +590,7 @@ speeches_dtm <- filtered_speeches |>
 speeches_dtm
 ```
 
-12 speeches containing a total of 5593 different (non-stop)words. 79% percent of sparsity in our document-term matrix means that 79% of the cells in the matrix are zeros. 79% of the word-document combinations do not happen in the speeches that we have analyzed. While this sparsity might seem high, sparsity can even be much higher in other real word text data (>90/95%). In our case, the sparsity is somewhat lower because these are political speeches made by the same institution (for several years represented by the same person), in the same context and that therefore often revolve around recurring topics. This thematic consistency reduces the number of unique, non-overlapping words across documents, making the vocabulary of the speeches across the years similar and in turn, it lowers the overall sparsity of our collection. Another factor that makes our sparsity lower is the fact that we are analyzing a relatively small number of documents (12 speeches). In larger collections, the sparsity tends to increase as the number of documents increases carrying with them new unique words.
+12 speeches containing a total of 5593 different (non-stop)words. 79% percent of sparsity in our document-term matrix means that 79% of the cells in the matrix are zeros. 79% of the word-document combinations do not happen in the speeches that we have analyzed. While this sparsity might seem high, sparsity can even be much higher in other real word text data (\>90/95%). In our case, the sparsity is somewhat lower because these are political speeches made by the same institution (for several years represented by the same person), in the same context and that therefore often revolve around recurring topics. This thematic consistency reduces the number of unique, non-overlapping words across documents, making the vocabulary of the speeches across the years similar and in turn, it lowers the overall sparsity of our collection. Another factor that makes our sparsity lower is the fact that we are analyzing a relatively small number of documents (12 speeches). In larger collections, the sparsity tends to increase as the number of documents increases carrying with them new unique words.
 
 ## Topic modelling
 
@@ -626,4 +635,4 @@ topics <- topics(lda_speeches)
 topics[order(names(topics))]
 ```
 
-Our analysis is way better now. From the results of topic modelling it can be seen that for the Barroso presidency from 2010 to 2013, as well as for the first of Juncker's speeches in 2015, the main topic seems to be the economic and financial crisis related with the global financial crisis and the subsequent eurozone crisis. Topic n.2 is related with the pandemic (ex. digital, nextgenerationeu), as well as with Ukraine's war (ex. ukraine, energy). Topic n.2 is prevalent in 2020 and 2022, the first speeches after each of these 2 crisis unfolded. Topic n.3 is related mainly with elections, a newly found unity and defense of the rule of law and democracy. These are all topics relevant in 2017 and 2018 when the EU had come to terms with the fact that Brexit was happening and EU commission president Juncker was trying to set out a vision for the future of the post-Brexit European Union. At the same time that he was praising and highlighting the unity and commitment of the remaining EU countries, he was also warning against the worsening of the democratic conditions in some of the European states and the need to defend the rule of law, thus underlining the importance of the forthcoming 2019 European elections. Topic n.4 is probably the more general topic, grouping together several of what have been key priorities of the European Commission in the last decade. These are speeches that come at times of difficulties for the Union, but without being necessarily in the most acute part of a crisis (2016, 2021, 2023). Some of the priorities mentioned by the EU commission presidents range from global challenges such as climate change, to the need to defend the rule of law and the EU's values, to the need to invest to create jobs and have a functioning common market for EU companies. Important in these 2016, 2021 and 2023 speeches is also the concept of security which has been declined in increasingly more ways. Initially related to migrants and terrorism in 2016, the concept then expanded into an umbrella term covering also social and economic security, turning into a key priority and concept of the von der Leyen's Commission. 
+Our analysis is way better now. From the results of topic modelling it can be seen that for the Barroso presidency from 2010 to 2013, as well as for the first of Juncker's speeches in 2015, the main topic seems to be the economic and financial crisis related with the global financial crisis and the subsequent eurozone crisis. Topic n.2 is related with the pandemic (ex. digital, nextgenerationeu), as well as with Ukraine's war (ex. ukraine, energy). Topic n.2 is prevalent in 2020 and 2022, the first speeches after each of these 2 crisis unfolded. Topic n.3 is related mainly with elections, a newly found unity and defense of the rule of law and democracy. These are all topics relevant in 2017 and 2018 when the EU had come to terms with the fact that Brexit was happening and EU commission president Juncker was trying to set out a vision for the future of the post-Brexit European Union. At the same time that he was praising and highlighting the unity and commitment of the remaining EU countries, he was also warning against the worsening of the democratic conditions in some of the European states and the need to defend the rule of law, thus underlining the importance of the forthcoming 2019 European elections. Topic n.4 is probably the more general topic, grouping together several of what have been key priorities of the European Commission in the last decade. These are speeches that come at times of difficulties for the Union, but without being necessarily in the most acute part of a crisis (2016, 2021, 2023). Some of the priorities mentioned by the EU commission presidents range from global challenges such as climate change, to the need to defend the rule of law and the EU's values, to the need to invest to create jobs and have a functioning common market for EU companies. Important in these 2016, 2021 and 2023 speeches is also the concept of security which has been declined in increasingly more ways. Initially related to migrants and terrorism in 2016, the concept then expanded into an umbrella term covering also social and economic security, turning into a key priority and concept of the von der Leyen's Commission.
