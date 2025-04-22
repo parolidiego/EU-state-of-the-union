@@ -11,6 +11,7 @@ rm(list = ls())
 library(tidyverse)
 library(tidytext)
 library(wordcloud)
+library(topicmodels)
 # devtools::install_github("lchiffon/wordcloud2")
 # library(wordcloud2)
 ```
@@ -247,6 +248,7 @@ ggplot(sentiment_chuncks, aes(x = chunk, y = sentiment, fill = year)) +
 ## TF-IDF
 
 ```{r}
+# Do not remove stopwords
 speeches_tf_idf <- filtered_speeches |> 
   count(year, word, sort = TRUE) |> 
   bind_tf_idf(term = word, document = year, n = n)
@@ -272,6 +274,12 @@ speeches_tf_idf |>
 ```
 
 Zipf’s law as well?
+
+Look at specific words over time? 
+
+Key words in context? creating a corpus object then using kwic to see why some of the weird words with high tf-idf are used in those particular years
+
+Stemming/lemmatizing? for counting words/tf-idf
 
 ## Bigrams
 
@@ -321,59 +329,61 @@ speeches_trigrams <- speeches |>
   unnest_tokens(bigram, text, token = "ngrams", n = 3)
 ```
 
-## DTM
+## Sparsity
 
 ```{r}
 speeches_dtm <- filtered_speeches |>
+  # Counting the appearances of each word in each speech
   count(year, word, sort = TRUE) |>
+  # Transforming from tidy format to document-term-matrix
   cast_dtm(document = year, term = word, value = n)
 
 speeches_dtm
 ```
 
+12 speeches containing a total of 5593 different (non-stop)words. 79% percent of sparsity in our document-term matrix means that 79% of the cells in the matrix are zeros. 79% of the word-document combinations do not happen in the speeches that we have analyzed. While this sparsity might seem high, sparsity can even be much higher in other real word text data (>90/95%). In our case, the sparsity is somewhat lower because these are political speeches made by the same institution (for several years represented by the same person), in the same context and that therefore often revolve around recurring topics. This thematic consistency reduces the number of unique, non-overlapping words across documents, making the vocabulary of the speeches across the years similar and in turn, it lowers the overall sparsity of our collection. Another factor that makes our sparsity lower is the fact that we are analyzing a relatively small number of documents (12 speeches). In larger collections, the sparsity tends to increase as the number of documents increases carrying with them new unique words.
+
 ## Topic modelling
 
 ```{r}
-library(topicmodels)
+# Applying LDA with 5 topics
+lda_speeches <- LDA(speeches_dtm, k = 4, control = list(seed = 777))
 
-lda <- LDA(speeches_dtm, k = 5, control = list(seed = 1234))
-tidy(lda)
+# Extracting the most likely terms to belong to each topic
+terms(lda_speeches, k = 10)
+```
 
-top_terms <- lda |> 
-  tidy() |> 
-  group_by(topic) |> 
-  slice_max(beta, n = 10) |> 
-  ungroup() |> 
-  arrange(topic, -beta)
+As can be seen from the results above, most of the top terms are common across all topics. This is probably due to the fact that these are also the most frequent words in the speeches and thus can be found in all topics. To improve this situation I will get rid of them by building a custom stop words list.
 
-top_terms
-
-# Repeat filtering out European, europe, union, commission, honourable
+```{r}
+# Custom stop words
 stop_custom <- tibble(word = c("european", 
                                "europe", 
                                "eu", 
                                "union", 
                                "commission", 
-                               "honourable"))
+                               "honourable",
+                               "world",
+                               "people",
+                               "time",
+                               "future"))
+
+# Repeating the pre-processing steps
 tidy_speeches <- speeches |>
   unnest_tokens(word, text) |>
-  anti_join(stop_words) |>
-  anti_join(stop_custom) |>
+  anti_join(stop_words, by = join_by(word)) |>
+  anti_join(stop_custom, by = join_by(word)) |>
   count(year, word, sort = TRUE) |>
   arrange(desc(n))
 
 speeches_dtm <- tidy_speeches |>
   cast_dtm(document = year, term = word, value = n)
-speeches_dtm
 
-lda <- LDA(speeches_dtm, k = 5, control = list(seed = 1234))
-top_terms <- lda |> 
-  tidy() |> 
-  group_by(topic) |> 
-  slice_max(beta, n = 10) |> 
-  ungroup() |> 
-  arrange(topic, -beta)
-top_terms
-# Some more words might be needed to be filtered out
+lda_speeches <- LDA(speeches_dtm, k = 4, control = list(seed = 777))
+
+terms(lda_speeches, k = 15)
+topics <- topics(lda_speeches)
+topics[order(names(topics))]
 ```
 
+Our analysis is way better now. From the results of topic modelling it can be seen that for the Barroso presidency from 2010 to 2013, as well as for the first of Juncker's speeches in 2015, the main topic seems to be the economic and financial crisis related with the global financial crisis and the subsequent eurozone crisis. Topic n.2 is related with the pandemic (ex. digital, nextgenerationeu), as well as with Ukraine's war (ex. ukraine, energy). Topic n.2 is prevalent in 2020 and 2022, the first speeches after each of these 2 crisis unfolded. Topic n.3 is related mainly with elections, a newly found unity and defense of the rule of law and democracy. These are all topics relevant in 2017 and 2018 when the EU had come to terms with the fact that Brexit was happening and EU commission president Juncker was trying to set out a vision for the future of the post-Brexit European Union. At the same time that he was praising and highlighting the unity and commitment of the remaining EU countries, he was also warning against the worsening of the democratic conditions in some of the European states and the need to defend the rule of law, thus underlining the importance of the forthcoming 2019 European elections. Topic n.4 is probably the more general topic, grouping together several of what have been key priorities of the European Commission in the last decade. These are speeches that come at times of difficulties for the Union, but without being necessarily in the most acute part of a crisis (2016, 2021, 2023). Some of the priorities mentioned by the EU commission presidents range from global challenges such as climate change, to the need to defend the rule of law and the EU's values, to the need to invest to create jobs and have a functioning common market for EU companies. Important in these 2016, 2021 and 2023 speeches is also the concept of security which has been declined in increasingly more ways. Initially related to migrants and terrorism in 2016, the concept then expanded into an umbrella term covering also social and economic security, turning into a key priority and concept of the von der Leyen's Commission. 
