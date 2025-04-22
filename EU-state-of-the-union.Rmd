@@ -8,19 +8,19 @@ date: ""
 
 Each September, the President of the European Commission gives a speech in the plenary session of the European Parliament about last year's achievements and presents the priorities for the next one.
 
-In this assignment we will be applying some text mining techniques to extract useful information from speeches comprehended between 2010 and 2023. During this period, the European Commission had three different presidents, Barroso, Juncker and von der Leyen, so in order to know the similarities and differences between speeches by year and by president we are going to apply several text mining techniques. We'll perform sentiment analysis to compare positivity and negativity across speeches, we will use TF-IDF to determine the most distinctive words each year and lastly we will do topic modelling to classify the speeches depending on their theme.
+In this assignment we will be applying some basic text mining techniques to extract useful information from speeches comprehended between 2010 and 2023. During this period, the European Commission had three different presidents, Barroso, Juncker and von der Leyen, so we'll also be looking for similarities and differences across years and presidents. We'll perform sentiment analysis to compare positivity and negativity across speeches, we will use TF-IDF to determine the most distinctive words each year and lastly we will do topic modelling to classify the speeches depending on their theme.
 
 As an initial hypothesis we expect to have a big amount of similarities regarding the style and the words used between presidents because, although each one of them may have their particular style and some particular event to address, these type of discourses tend to follow a formal and structured scheme and consistently mention key policy areas.
 
 Moreover, in the sentiment analysis we expect to achieve greater negativity between 2010 and 2016 and in 2020-2022 because it was the period of the Eurozone debt crisis and the COVID-19 pandemic and the Ukraine war, respectively.
 
-Similarly we expect the main topics of the speeches to reflect these main challenges faced by the Union (financial crisis, Covid, Ukraine), as well as maybe a mentioning of Brexit.
+Similarly we expect the main topics of the speeches to reflect these main challenges faced by the Union (financial crisis, COVID, Ukraine), as well as maybe a mentioning of Brexit.
 
 # Library
 
 Installing and loading packages.
 
-```{r}
+```{r, warning = FALSE, message = FALSE}
 rm(list = ls())
 # install.packages("tidyverse")
 # install.packages("tidytext")
@@ -42,8 +42,6 @@ library(scales)
 # Loading data
 
 Here we read the speeches and we assign the year in which they were held and the president that delivered each of them.
-
-Note that some years are missing. These years correspond to European election years, during which the Commission and the Parliament are typically in transition and not yet fully in office.
 
 All the speeches have been obtained from the [European's Commission website](https://state-of-the-union.ec.europa.eu/index_en) and speeches' section headings or subheadings have been deleted.
 
@@ -75,9 +73,11 @@ speeches <- speeches |>
     year %in% c(2020, 2021, 2022, 2023) ~ "von der Leyen"))
 ```
 
+Note that some years are missing. These years correspond to European election years, during which the Commission and the Parliament are typically in transition and not yet fully in office and thus the speech is not delivered.
+
 # Pre-processing
 
-Since stop words do not add useful information to our analysis we are filtering them.
+As for most text mining pipelines, the first step is to proceed with tokenization. Then, since stop words do not add useful information to our analysis we are filtering them out .
 
 ```{r}
 # Tokenizing by word
@@ -112,27 +112,64 @@ filtered_speeches |>
   theme_minimal()
 ```
 
-In a first look, we can observe that the most used words are making reference to Europe, the European Union and the Commission as well as to the European people to which these speeches are directed. Other words refer to key policy area mainly related with the economy.
+In a first look, we can observe that the most used words are making reference to Europe, the European Union and the Commission as well as to the European people to which these speeches are directed. Other words refer to key policy areas mainly related with the economy.
 
 A curious presence is the word "honourable". Its presence is due to the fact that all Commission presidents to address the member of the European Parliament where the speech takes place use the expression "Honourable Members" (of the parliament). This expression is used repeatedly, often as the opening of sentences or at least of each section of the speech.
 
 We'll now focus on differences across years and presidents.
 
 ```{r}
-filtered_speeches |> 
-  group_by(president) |> 
-  count(word, sort = TRUE) |> 
-  slice_head(n = 5)
-
+# Counting the appearances of words by year
 filtered_speeches |> 
   group_by(year) |> 
   count(word, sort = TRUE) |> 
-  slice_head(n = 3)
+  # Selecting only the most used word
+  slice_head(n = 1)
 ```
+
+We can see that "Europe" or "European" are constantly the most used word every year. 
+
+What happens if instead we filter out these standard words. Which ones become the most used?
+
+```{r}
+# Repeating the same process as before, but filtering out standard words
+filtered_speeches |>
+  filter(!word %in% c("european", "europe", "eu", "union", "commission", "parliament", "president")) |> 
+  group_by(year) |> 
+  count(word, sort = TRUE) |> 
+  slice_head(n = 1)
+```
+
+
+This gives us more insights. For example it's clear that the focus of 2022 was the Ukraine's war, while in 2020, the Commission underlined the global dimension of the pandemic we were witnessing. "Euro", "growth" and "crisis" are instead words that characterize the speeches happening closer to the financial and Eurozone crisis. 
+
+We now turn the focus on each presidency and compare their most used words.
+
+```{r}
+# Counting words and making a facet graph of the top 10 words by president
+filtered_speeches |> 
+  filter(!word %in% c("european", "europe", "eu", "union", "commission", "parliament", "president", "europeans", "honourable")) |> 
+  count(president, word, sort = TRUE) |> 
+  group_by(president) |> 
+  slice_max(n, n = 10) |> 
+  ggplot(aes(n, reorder_within(word, n, president))) +
+  geom_col(fill = "blue") +
+  facet_wrap(~ president, nrow = 3, scales = "free_y") +
+  scale_y_reordered() +
+  labs(
+    title = "Most used words in State of the Union speeches by EC President",
+    y = NULL, 
+    x = "Number of times used") +
+  theme_minimal()
+```
+
+Again here we can see how the Barroso presidency was really focused on overcoming the economic crisis. Juncker instead often made references to words of unity because his presidency was marked by the Brexit referendum and the need to protect the Union from raising nationalisms as well as finding european solutions to the refugee crisis. von der Leyen's presidency is marked by the pandemic and the war in Ukraine, two global events that are reflected in the choice of words used in her speeches.
 
 Now we will be calculating the frequency of each word to compare the style used by these presidents. We will be comparing the speeches of von der Leyen since she is the current president to see if they differ from the previous ones.
 
 ```{r}
+# Probably need some comments on the code below
+
 frequency <- filtered_speeches |> 
   group_by(president) |> 
   count(word) |> 
@@ -177,41 +214,26 @@ cor.test(data = frequency[frequency$president == "Juncker",],
          ~ proportion + `von der Leyen`)
 ```
 
-In both cases the correlation is greater than 0.79, so we have demonstrated that the word frequency used in Barroso and Juncquer's speeches is quite similar to von der Leyen's. Additionally, Juncquer's speech is slightly more similar to von der Leyen's than Barroso's.
-
-### Wordcloud
-
-What could we say?
-
-```{r}
-filtered_speeches |> 
-  count(word, sort = TRUE) |> 
-  with(wordcloud(word, n, colors = brewer.pal(4, "Accent"), max.words = 100))
-# change color palette
-
-filtered_speeches |> 
-  filter(!word %in% c("european", "europe", "eu", "union", "commission")) |>
-  count(word, sort = TRUE) |> 
-  filter(n > 60) |> 
-  with(wordcloud(word, n, colors = brewer.pal(4, "Accent")))
-```
+In both cases the correlation is greater than 0.79, so we have demonstrated that the word frequency used in Barroso and Juncker's speeches is quite similar to von der Leyen's. Additionally, Juncker's speech is slightly more similar to von der Leyen's than Barroso's.
 
 ## Sentiment analysis
 
-```{r}
-get_sentiments("afinn")
-get_sentiments("nrc")
-get_sentiments("bing")
-```
+We now focus on the sentiment that words in the speeches convey. We'll carry out word-level sentiment analysis using several lexicons. We are aware of the limitations of word-level sentiment analysis, but it serves our purpose of applying basic techniques.
 
 ```{r}
 # Most common negative words by bing
 filtered_speeches |> 
+  # Joining the bing classification
   left_join(get_sentiments("bing"), by = join_by(word)) |> 
+  # filtering only negative words
   filter(sentiment == "negative") |> 
+  # counting and sorting
   count(word, sort = TRUE) |> 
+  # selecting the top 10
   slice_head(n = 10)
 ```
+
+The most used words that are labelled as negative by the bing lexicon are all related with some of the problems that the Union had to face in the last decade. The most used word is "crisis", which is not surprising since the speeches were given in a period of time where the Union was indeed facing several crises.
 
 ```{r}
 # Most common positive words by bing
@@ -222,22 +244,14 @@ filtered_speeches |>
   slice_head(n = 10)
 ```
 
-```{r}
-# Trust
-nrc_trust <- get_sentiments("nrc") |> 
-  filter(sentiment == "trust")
-filtered_speeches |> 
-  left_join(nrc_trust, by = join_by(word)) |> 
-  filter(sentiment == "trust") |> 
-  count(word, sort = TRUE) |> 
-  slice_head(n = 10)
+On the other hand bing labels as positives words that deal with stability, solidarity and strengthening and reforming the Union. 
 
-# commission is put as a trust word
-```
+We'll now focus instead on emotion detection, looking in particular at fear and disgust. For this we'll use another lexicon called nrc.
 
 ```{r}
 # Fear
 nrc_fear <- get_sentiments("nrc") |> 
+  # selecting only the words labelled as fear
   filter(sentiment == "fear")
 filtered_speeches |> 
   left_join(nrc_fear, by = join_by(word)) |> 
@@ -246,38 +260,7 @@ filtered_speeches |>
   slice_head(n = 10)
 ```
 
-```{r}
-# Sadness
-nrc_sadness <- get_sentiments("nrc") |> 
-  filter(sentiment == "sadness")
-filtered_speeches |> 
-  left_join(nrc_sadness, by = join_by(word)) |> 
-  filter(sentiment == "sadness") |> 
-  count(word, sort = TRUE) |> 
-  slice_head(n = 10)
-```
-
-```{r}
-# Anger
-nrc_anger <- get_sentiments("nrc") |> 
-  filter(sentiment == "anger")
-filtered_speeches |> 
-  left_join(nrc_anger, by = join_by(word)) |> 
-  filter(sentiment == "anger") |> 
-  count(word, sort = TRUE) |> 
-  slice_head(n = 10)
-```
-
-```{r}
-# Surprise
-nrc_surprise <- get_sentiments("nrc") |> 
-  filter(sentiment == "surprise")
-filtered_speeches |> 
-  left_join(nrc_surprise, by = join_by(word)) |> 
-  filter(sentiment == "surprise") |> 
-  count(word, sort = TRUE) |> 
-  slice_head(n = 10)
-```
+Most of these words can indeed be related to fear as they recall negative things that have happened (ex. Ukraine's war, pandemic, asylum crisis) or that can happen ("risk", "urgent", "change"). 
 
 ```{r}
 # Disgust
@@ -290,27 +273,7 @@ filtered_speeches |>
   slice_head(n = 10)
 ```
 
-```{r}
-# Joy
-nrc_joy <- get_sentiments("nrc") |> 
-  filter(sentiment == "joy")
-filtered_speeches |> 
-  left_join(nrc_joy, by = join_by(word)) |> 
-  filter(sentiment == "joy") |> 
-  count(word, sort = TRUE) |> 
-  slice_head(n = 10)
-```
-
-```{r}
-# Anticipation
-nrc_anticipation <- get_sentiments("nrc") |> 
-  filter(sentiment == "anticipation")
-filtered_speeches |> 
-  left_join(nrc_anticipation, by = join_by(word)) |> 
-  filter(sentiment == "anticipation") |> 
-  count(word, sort = TRUE) |> 
-  slice_head(n = 10)
-```
+While some of these words make sense (such as "terrorism", "poverty", "corruption"), other words are not that clear. For example, the association between weight and disgust, or honest and disgust, is unclear and questionable. These mismatches highlight the limitations and the difficulties of using pre-defined lexicons for emotion detection.
 
 ## Do the speeches have a similar structure related to positivity and negativity?
 
