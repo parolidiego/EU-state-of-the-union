@@ -12,11 +12,23 @@ library(tidyverse)
 library(tidytext)
 library(wordcloud)
 library(topicmodels)
+library(scales)
 # devtools::install_github("lchiffon/wordcloud2")
 # library(wordcloud2)
 ```
+# Introduction
+
+Each September, the President of the European Commission gives a speech about last year's achievements and presents the priorities for the next one.
+
+In this assignment we will be applying some text mining techniques to extract useful information from speeches comprehended between 2010 and 2023. During this period, the European Commission had three different presidents, Barroso, Juncker and Von der Leyen, so in order to know the similarities and differences between speeches by year and by president we are going to perform a sentiment analysis to compare positivity and negativity across speeches, we will use TF-IDF to determine the most distinctive words each year and lastly we will do topic modelling to classify the speeches depending on their theme.
+
+As an initial hypothesis we will expect to have a big amount of similarities regarding the style and the words used between presidents because, although each one oh them may have their particular style, this type of discourse tend to follow a formal and structured scheme. 
+
+Moreover, in the sentiment analysis we expect to achieve greater negativity between 2010 and 2016 and in 2020 because it was the period of the Eurozone debt crisis and the COVID-19 pandemic, respectively.  
 
 # Loading data 
+
+Here we read the speeches and we assign the year in which they were held and the president that delivered each of them.
 
 ```{r}
 speech_2010 <- read_file("speeches/2010.txt") 
@@ -38,6 +50,7 @@ speeches <- tibble(
     speech_2010, speech_2011, speech_2012, speech_2013,
     speech_2015, speech_2016, speech_2017, speech_2018,
     speech_2020, speech_2021, speech_2022, speech_2023))
+
 speeches <- speeches |> 
   mutate(president = case_when(
     year %in% c(2010, 2011, 2012, 2013) ~ "Barroso",
@@ -46,6 +59,8 @@ speeches <- speeches |>
 ```
 
 # Working
+
+Since stop words do not add useful information to our analysis we re filtering them.
 
 ```{r}
 tokenized_speeches <- speeches |> 
@@ -68,7 +83,11 @@ filtered_speeches |>
   ggplot(aes(n, reorder(word, n))) +
   geom_col() +
   labs(y = NULL)
+```
 
+In a first look, we can observe that the most used words are making reference to Europe, the European Union and the Commission. This also can be seen if we look at the most used words per president or per year.
+
+```{r}
 filtered_speeches |> 
   group_by(president) |> 
   count(word, sort = TRUE) |> 
@@ -78,7 +97,11 @@ filtered_speeches |>
   group_by(year) |> 
   count(word, sort = TRUE) |> 
   slice_head(n = 3)
+```
 
+Now we will be calculating the frequency of each word to compare the style used by these presidents. We will be comparing the speeches of von der Leyen since she is the current president to see if they differ from the previous ones.
+
+```{r}
 frequency <- filtered_speeches |> 
   group_by(president) |> 
   count(word) |> 
@@ -89,13 +112,45 @@ frequency <- filtered_speeches |>
               values_from = proportion) |> 
   mutate(avg_proportion = rowMeans(across(c("Barroso", "Juncker", "von der Leyen")), 
                                    na.rm = TRUE)) |>
+    pivot_longer(`Barroso`:`Juncker`,
+               names_to = "president", values_to = "proportion") |> 
   arrange(desc(avg_proportion))
 frequency
 
-# Correlation?
+ggplot(frequency, aes(x = proportion, y = `von der Leyen`, 
+                      color = abs(`von der Leyen` - proportion))) +
+  geom_abline(color = "gray40", lty = 2) +
+  geom_jitter(alpha = 0.1, size = 0.5, width = 0.3, height = 0.3) +
+  geom_text(aes(label = word), check_overlap = TRUE, vjust = 0.5) +
+  scale_x_log10(labels = percent_format()) +
+  scale_y_log10(labels = percent_format()) +
+  scale_color_gradient(limits = c(0, 0.001), 
+                       low = "darkslategray4", high = "gray75") +
+  facet_wrap(~president, ncol = 2) +
+  theme(legend.position="none") +
+  labs(y = "von der Leyen", x = NULL)
+
 ```
 
-### Wordcloud
+By looking at the graph we can observe that word frequency is quite similar between von der Leyen and the previous presidents. However, we must say that since in Barroso and Juncker's presidencies the economic situation was the principal concern words like "economic", "euro", "monetary" or "debt" had a highest frequency than in von der Layen's presidency.
+
+To check from a quantitative perspective if the style of the speeches are truly similar we are going to calculate the Pearson correlation coefficient.
+
+```{r}
+cor.test(data = frequency[frequency$president == "Barroso",],
+         ~ proportion + `von der Leyen`)
+```
+
+```{r}
+cor.test(data = frequency[frequency$president == "Juncker",],
+         ~ proportion + `von der Leyen`)
+```
+
+In both cases the correlation is greater than 0.79, so we have demonstrated that the word frequency used in Barroso and Juncquer's speeches is quite similar to von der Leyen's. Additionally, Juncquer's speech is slightly more similar to von der Leyen's than Barroso's.
+
+### Wordcloud 
+
+What could we say?
 
 ```{r}
 filtered_speeches |> 
@@ -104,7 +159,7 @@ filtered_speeches |>
 # change color palette
 
 filtered_speeches |> 
-  filter(!word %in% c("european", "europe", "eu", "union", "commision")) |>
+  filter(!word %in% c("european", "europe", "eu", "union", "commission")) |>
   count(word, sort = TRUE) |> 
   filter(n > 60) |> 
   with(wordcloud(word, n, colors = brewer.pal(4, "Accent")))
@@ -126,14 +181,20 @@ filtered_speeches |>
   filter(sentiment == "negative") |> 
   count(word, sort = TRUE) |> 
   slice_head(n = 10)
+```
 
+
+```{r}
 # Most common positive words by bing
 filtered_speeches |> 
   left_join(get_sentiments("bing"), by = join_by(word)) |> 
   filter(sentiment == "positive") |> 
   count(word, sort = TRUE) |> 
   slice_head(n = 10)
+```
 
+
+```{r}
 # Trust
 nrc_trust <- get_sentiments("nrc") |> 
   filter(sentiment == "trust")
@@ -143,6 +204,11 @@ filtered_speeches |>
   count(word, sort = TRUE) |> 
   slice_head(n = 10)
 
+# commission is put as a trust word
+```
+
+
+```{r}
 # Fear
 nrc_fear <- get_sentiments("nrc") |> 
   filter(sentiment == "fear")
@@ -151,7 +217,10 @@ filtered_speeches |>
   filter(sentiment == "fear") |> 
   count(word, sort = TRUE) |> 
   slice_head(n = 10)
+```
 
+
+```{r}
 # Sadness
 nrc_sadness <- get_sentiments("nrc") |> 
   filter(sentiment == "sadness")
@@ -160,7 +229,10 @@ filtered_speeches |>
   filter(sentiment == "sadness") |> 
   count(word, sort = TRUE) |> 
   slice_head(n = 10)
+```
 
+
+```{r}
 # Anger
 nrc_anger <- get_sentiments("nrc") |> 
   filter(sentiment == "anger")
@@ -169,7 +241,10 @@ filtered_speeches |>
   filter(sentiment == "anger") |> 
   count(word, sort = TRUE) |> 
   slice_head(n = 10)
+```
 
+
+```{r}
 # Surprise
 nrc_surprise <- get_sentiments("nrc") |> 
   filter(sentiment == "surprise")
@@ -178,7 +253,10 @@ filtered_speeches |>
   filter(sentiment == "surprise") |> 
   count(word, sort = TRUE) |> 
   slice_head(n = 10)
+```
 
+
+```{r}
 # Disgust
 nrc_disgust <- get_sentiments("nrc") |> 
   filter(sentiment == "disgust")
@@ -187,7 +265,10 @@ filtered_speeches |>
   filter(sentiment == "disgust") |> 
   count(word, sort = TRUE) |> 
   slice_head(n = 10)
+```
 
+
+```{r}
 # Joy
 nrc_joy <- get_sentiments("nrc") |> 
   filter(sentiment == "joy")
@@ -196,7 +277,10 @@ filtered_speeches |>
   filter(sentiment == "joy") |> 
   count(word, sort = TRUE) |> 
   slice_head(n = 10)
+```
 
+
+```{r}
 # Anticipation
 nrc_anticipation <- get_sentiments("nrc") |> 
   filter(sentiment == "anticipation")
@@ -207,13 +291,17 @@ filtered_speeches |>
   slice_head(n = 10)
 ```
 
-Do the speeches have a similar structure related to poisitivity and negativity?
+## Do the speeches have a similar structure related to positivity and negativity?
+
+After the frequency distribution analysis, we know that these presidents share a common style in terms of word frequency, but now we are going to check how positive or negative the speeches were. To do this we will be using two lexicons, AFINN that gives us the sentiment in a regression format, and Bing, which gives a the sentiment as a multiclass classification. We use both to check if there are not clear differences between using one or another to prevent any type of lexicon bias.
+
 
 ```{r}
 sentiment_chuncks <- filtered_speeches |>
   mutate(year = as.factor(year)) |> 
   group_by(year) |>
-  mutate(word_id = row_number(),
+  mutate(word_id = row_number(), # Since we only have words we have created 
+         #chunks of 100 words to measure the sentiment in each of them
          chunk = (word_id %/% 100) + 1) |> 
   select(-word_id) |> 
   left_join(get_sentiments("afinn"), by = "word") |>
@@ -244,36 +332,188 @@ ggplot(sentiment_chuncks, aes(x = chunk, y = sentiment, fill = year)) +
   geom_col(show.legend = FALSE) +
   facet_wrap(~ year, ncol = 2, scales = "free_x")
 ```
+By looking at both results, we can say that the speeches are predominantly positive. In this graph, it seems that the speech given in the year 2015 is the most negative, that was the first State of Union given by Juncquer and it was in the middle of the Refugee Crisis of Middle East, this situation added with the fact the the economic crisis was not finished yet provoked that the first part of his speech was pretty negative.
+
+Surprisingly, in the year 2020 the most common sentiment was positivity, in the middle of the pandemic the president of the European Commission opted for giving a more positive speech that could bring a little bit of hope in the middle of the disaster. 
+
+### Most negative year
+
+```{r}
+bingnegative <- get_sentiments("bing") %>% 
+  filter(sentiment == "negative")
+
+wordcounts <- filtered_speeches %>%
+  group_by(year) %>%
+  summarize(words = n())
+
+
+filtered_speeches %>%
+  semi_join(bingnegative) %>%
+  group_by(year) %>%
+  summarize(negativewords = n()) %>%
+  left_join(wordcounts, by = c("year")) %>%
+  mutate(ratio = negativewords/words) %>%
+ # slice_max(ratio)
+  ungroup()
+
+```
+The most negative year is 2013, it is the one that has a biggest ratio of negative words, in the previous graph 2015 seemed to be the most negative because it is the longest one and it is the one that has the biggest number of negative words. However, in relative terms 2013 is more negative. (We should comment if something particular happened in 2013, but we should also have into account that only 5% of the words are negative, all the speeches are clearly positive)
 
 ## TF-IDF
 
 ```{r}
-# Do not remove stopwords
-speeches_tf_idf <- filtered_speeches |> 
+speeches_tf_idf <- tokenized_speeches |> 
   count(year, word, sort = TRUE) |> 
   bind_tf_idf(term = word, document = year, n = n)
 
 speeches_tf_idf |>
-  arrange(desc(tf_idf))
+  arrange(desc(tf_idf)) 
 
 speeches_tf_idf |> 
   group_by(year) |> 
-  slice_max(tf_idf)
+  slice_max(tf_idf) #  efsf is European Financial Stability Facility
 
 speeches_tf_idf |> 
   mutate(president = case_when(
     year %in% c(2010, 2011, 2012, 2013) ~ "Barroso",
     year %in% c(2015, 2016, 2017, 2018) ~ "Juncker",
     year %in% c(2020, 2021, 2022, 2023) ~ "von der Leyen")) |>
-  group_by(president) |> 
-  slice_max(tf_idf, n = 10)
+  group_by(president, year) |> 
+  slice_max(tf_idf)
 
-
-
-# Deleting some more words?
+# Deleting some more words? What to do with the country's and europe's
 ```
 
-Zipf’s law as well?
+## Zip's Law
+
+To calculate the slope, should we change the rank that determines the middle section? 
+In the Juncker case, the straight line is not achieve until 50 it seems and the same happens in von der Leyen's case.
+
+```{r}
+speeches_tf_idf <- speeches_tf_idf |> 
+    mutate(president = case_when(
+    year %in% c(2010, 2011, 2012, 2013) ~ "Barroso",
+    year %in% c(2015, 2016, 2017, 2018) ~ "Juncker",
+    year %in% c(2020, 2021, 2022, 2023) ~ "von der Leyen")) |> 
+  group_by(year) |> 
+  arrange(desc(tf)) |> 
+  ungroup()
+
+freq_by_rank_barroso <- speeches_tf_idf %>% 
+  filter(president == "Barroso") |> 
+  group_by(year) %>% 
+  #we create the column for the rank with row_number
+  mutate(rank = row_number()) %>%
+  ungroup()
+
+freq_by_rank_juncker <- speeches_tf_idf %>% 
+  filter(president == "Juncker") |> 
+  group_by(year) %>% 
+  #we create the column for the rank with row_number
+  mutate(rank = row_number()) %>%
+  ungroup()
+
+freq_by_rank_vonderleyen <- speeches_tf_idf %>% 
+  filter(president == "von der Leyen") |> 
+  group_by(year) %>% 
+  #we create the column for the rank with row_number
+  mutate(rank = row_number()) %>%
+  ungroup()
+
+```
+
+```{r}
+freq_by_rank_barroso %>% 
+  ggplot(aes(rank, tf, color = year)) + 
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+
+```{r}
+rank_subset <- freq_by_rank_barroso %>% 
+  filter(rank < 500,
+         rank > 10)
+
+#we use the linear model function to find numeric coefficients of relationship between tf and rank
+lm(log10(tf) ~ log10(rank), data = rank_subset)
+```
+
+```{r}
+freq_by_rank_barroso %>% 
+  ggplot(aes(rank, tf, color = year)) + 
+  #we add a line in the plot with the two coefficients we have found
+  geom_abline(intercept = -0.9407, slope = -0.9432, 
+              color = "gray50", linetype = 2) +
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+```{r}
+freq_by_rank_juncker %>% 
+  ggplot(aes(rank, tf, color = year)) + 
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+
+```{r}
+rank_subset <- freq_by_rank_juncker %>% 
+  filter(rank < 500,
+         rank > 10)
+
+#we use the linear model function to find numeric coefficients of relationship between tf and rank
+lm(log10(tf) ~ log10(rank), data = rank_subset)
+```
+
+
+```{r}
+freq_by_rank_juncker %>% 
+  ggplot(aes(rank, tf, color = year)) + 
+  #we add a line in the plot with the two coefficients we have found
+  geom_abline(intercept = -0.906, slope = -0.9649, 
+              color = "gray50", linetype = 2) +
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+```{r}
+freq_by_rank_vonderleyen %>% 
+  ggplot(aes(rank, tf, color = year)) + 
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+
+```{r}
+rank_subset <- freq_by_rank_vonderleyen %>% 
+  filter(rank < 500,
+         rank > 10)
+
+#we use the linear model function to find numeric coefficients of relationship between tf and rank
+lm(log10(tf) ~ log10(rank), data = rank_subset)
+```
+
+
+```{r}
+freq_by_rank_vonderleyen %>% 
+  ggplot(aes(rank, tf, color = year)) + 
+  #we add a line in the plot with the two coefficients we have found
+  geom_abline(intercept = -0.9615, slope = -0.9467, 
+              color = "gray50", linetype = 2) +
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+
+
+
 
 Look at specific words over time? 
 
