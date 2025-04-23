@@ -32,11 +32,6 @@ library(tidytext)
 library(wordcloud)
 library(topicmodels)
 library(scales)
-
-
-# Probably will eventually delete this
-# devtools::install_github("lchiffon/wordcloud2")
-# library(wordcloud2)
 ```
 
 # Loading data
@@ -165,6 +160,8 @@ filtered_speeches |>
 
 Again here we can see how the Barroso presidency was really focused on overcoming the economic crisis. Juncker instead often made references to words of unity because his presidency was marked by the Brexit referendum and the need to protect the Union from raising nationalisms as well as finding european solutions to the refugee crisis. von der Leyen's presidency is marked by the pandemic and the war in Ukraine, two global events that are reflected in the choice of words used in her speeches.
 
+-- Review
+
 Now we will be calculating the frequency of each word to compare the style used by these presidents. We will be comparing the speeches of von der Leyen since she is the current president to see if they differ from the previous ones.
 
 ```{r}
@@ -216,9 +213,16 @@ cor.test(data = frequency[frequency$president == "Juncker",],
 
 In both cases the correlation is greater than 0.79, so we have demonstrated that the word frequency used in Barroso and Juncker's speeches is quite similar to von der Leyen's. Additionally, Juncker's speech is slightly more similar to von der Leyen's than Barroso's.
 
+Other: correlation with phi coefficient on whether words tend to appear in the same speech? --> probably useless
+--
+
+-- 
+Another addition could be look at specific words frequency over time
+--
+
 ## Sentiment analysis
 
-We now focus on the sentiment that words in the speeches convey. We'll carry out word-level sentiment analysis using several lexicons. We are aware of the limitations of word-level sentiment analysis, but it serves our purpose of applying basic techniques.
+We now focus on the sentiment that words in the speeches convey. We'll carry out word-level sentiment analysis using several lexicons. We are aware of the several limitations of word-level sentiment analysis, but it serves our purpose of applying basic techniques.
 
 ```{r}
 # Most common negative words by bing
@@ -275,20 +279,21 @@ filtered_speeches |>
 
 While some of these words make sense (such as "terrorism", "poverty", "corruption"), other words are not that clear. For example, the association between weight and disgust, or honest and disgust, is unclear and questionable. These mismatches highlight the limitations and the difficulties of using pre-defined lexicons for emotion detection.
 
-## Do the speeches have a similar structure related to positivity and negativity?
+### Do the speeches have a similar structure related to positivity and negativity?
 
-After the frequency distribution analysis, we know that these presidents share a common style in terms of word frequency, but now we are going to check how positive or negative the speeches were. To do this we will be using two lexicons, AFINN that gives us the sentiment in a regression format, and Bing, which gives a the sentiment as a multiclass classification. We use both to check if there are not clear differences between using one or another to prevent any type of lexicon bias.
+After the frequency distribution analysis, we know that the Commission presidents share a common style in terms of word frequency, but now we are going to check how positive or negative the speeches were. To do this we will be using two lexicons, AFINN that gives us the sentiment in a regression format, and Bing, which gives a the sentiment as a multiclass classification. We use both to check if there are not clear differences between using one or another to prevent any type of lexicon bias.
 
-```{r}
+```{r, fig.height=7}
 sentiment_chuncks <- filtered_speeches |>
   mutate(year = as.factor(year)) |> 
   group_by(year) |>
-  mutate(word_id = row_number(), # Since we only have words we have created 
-         #chunks of 100 words to measure the sentiment in each of them
+  # Creating chunks of 100 words to measure the sentiment in each of them
+  mutate(word_id = row_number(), 
          chunk = (word_id %/% 100) + 1) |> 
   select(-word_id) |> 
   left_join(get_sentiments("afinn"), by = "word") |>
-  group_by(year, chunk) |>                        
+  group_by(year, chunk) |>  
+  # Summing all the scores given by affin for each 100 word chunk
   summarise(sentiment = sum(value, na.rm = TRUE),
             .groups = "drop")
 
@@ -305,10 +310,13 @@ sentiment_chuncks <- filtered_speeches |>
   select(-word_id) |> 
   left_join(get_sentiments("bing"), by = "word") |>
   group_by(year, chunk) |>
+  # counting the numbers of positive and negative words
   count(sentiment) |> 
+  # creating two separate columns with the number of positive and negative
   pivot_wider(names_from = sentiment, 
               values_from = n, values_fill = 0) |>
   select(-"NA") |> 
+  # calculating the total sentiment as n. of positive minus n. negatives
   mutate(sentiment = positive - negative)
 
 ggplot(sentiment_chuncks, aes(x = chunk, y = sentiment, fill = year)) +
@@ -316,9 +324,11 @@ ggplot(sentiment_chuncks, aes(x = chunk, y = sentiment, fill = year)) +
   facet_wrap(~ year, ncol = 2, scales = "free_x")
 ```
 
-By looking at both results, we can say that the speeches are predominantly positive. In this graph, it seems that the speech given in the year 2015 is the most negative, that was the first State of Union given by Juncquer and it was in the middle of the Refugee Crisis of Middle East, this situation added with the fact the the economic crisis was not finished yet provoked that the first part of his speech was pretty negative.
+In the graphs, it seems that the speech given in the year 2015 is the most negative, that was the first State of Union given by Juncker and it was in the middle of the Refugee Crisis of Middle East, this situation added with the fact the the economic crisis was not finished yet provoked that the first part of his speech was pretty negative.
 
-Surprisingly, in the year 2020 the most common sentiment was positivity, in the middle of the pandemic the president of the European Commission opted for giving a more positive speech that could bring a little bit of hope in the middle of the disaster.
+Surprisingly, in the year 2020 the most common sentiment was positivity, in the middle of the pandemic the president of the European Commission opted for giving a more positive speech that could bring a little bit of hope in the middle of a tragedy.
+
+By looking at both graphs, we can say that the speeches are predominantly positive. This is probably because the Commission uses these formal speeches to boast its results, communicate its new priorities and even when addressing challenges emphasize hope and highlight the progresses made. Furthermore, there doesn't appear to be a consistent pattern in the use of positive or negative sentiment. For instance, the speeches don’t seem to begin or include specific moments where negative segments are consistently introduced.
 
 ### Most negative year
 
@@ -326,23 +336,30 @@ Surprisingly, in the year 2020 the most common sentiment was positivity, in the 
 bingnegative <- get_sentiments("bing") %>% 
   filter(sentiment == "negative")
 
+# creating a dataframe with the total number of words per year
 wordcounts <- filtered_speeches %>%
   group_by(year) %>%
   summarize(words = n())
 
-
 filtered_speeches %>%
-  semi_join(bingnegative) %>%
+  # keeping only negative words
+  semi_join(bingnegative, by = join_by(word)) %>%
   group_by(year) %>%
+  # counting how many negative words are there per year
   summarize(negativewords = n()) %>%
+  # joining the info of how many total words
   left_join(wordcounts, by = c("year")) %>%
+  # calculating the percentage of negative words over total words
   mutate(ratio = negativewords/words) %>%
- # slice_max(ratio)
-  ungroup()
-
+  ungroup() %>%
+  arrange(desc(ratio))
 ```
 
+-- Review
+
 The most negative year is 2013, it is the one that has a biggest ratio of negative words, in the previous graph 2015 seemed to be the most negative because it is the longest one and it is the one that has the biggest number of negative words. However, in relative terms 2013 is more negative. (We should comment if something particular happened in 2013, but we should also have into account that only 5% of the words are negative, all the speeches are clearly positive)
+
+--
 
 ## TF-IDF
 
@@ -355,21 +372,22 @@ speeches_tf_idf |>
   arrange(desc(tf_idf)) 
 
 speeches_tf_idf |> 
-  group_by(year) |> 
-  slice_max(tf_idf) #  efsf is European Financial Stability Facility
-
-speeches_tf_idf |> 
   mutate(president = case_when(
     year %in% c(2010, 2011, 2012, 2013) ~ "Barroso",
     year %in% c(2015, 2016, 2017, 2018) ~ "Juncker",
     year %in% c(2020, 2021, 2022, 2023) ~ "von der Leyen")) |>
-  group_by(president, year) |> 
+  group_by(year) |> 
   slice_max(tf_idf)
-
-# Deleting some more words? What to do with the country's and europe's
+#  efsf is European Financial Stability Facility
 ```
 
+-- 
+Comment + fix europe's and country's + look at some of these words in context to understand why they were used (ex. exist, sound, parties, 2019 patriotism, surprise, cyber)
+--
+
 ## Zip's Law
+
+-- Review
 
 To calculate the slope, should we change the rank that determines the middle section? In the Juncker case, the straight line is not achieve until 50 it seems and the same happens in von der Leyen's case.
 
@@ -490,13 +508,13 @@ freq_by_rank_vonderleyen %>%
   scale_y_log10()
 ```
 
-Look at specific words over time?
-
-Key words in context? creating a corpus object then using kwic to see why some of the weird words with high tf-idf are used in those particular years
-
-Stemming/lemmatizing? for counting words/tf-idf
+--
 
 ## Bigrams
+
+-- review
+
+Which version is more interesting?
 
 ```{r}
 # Keeping all bigrams that are not 2 stopwords
@@ -512,8 +530,6 @@ speeches_bigrams <- speeches |>
   filter(!word1 %in% stop_words$word,
          !word2 %in% stop_words$word) |> 
   unite("bigram", "word1", "word2", sep = " ")
-
-# Which one should I use?
 ```
 
 ```{r}
@@ -526,13 +542,10 @@ bigrams_tf_idf <- speeches_bigrams |>
   count(year, bigram, sort = TRUE) |> 
   bind_tf_idf(term = bigram, document = year, n = n) |> 
   arrange(desc(tf_idf))
+bigrams_tf_idf
 ```
 
-Correlation?
-
-Conditional n-grams?
-
-Use bigrams to see biases in sentiment analysis?
+--
 
 ## Trigrams
 
@@ -540,6 +553,10 @@ Use bigrams to see biases in sentiment analysis?
 speeches_trigrams <- speeches |> 
   unnest_tokens(bigram, text, token = "ngrams", n = 3)
 ```
+
+--
+Try to see if trigrams give some insights as well by loooking at their count and tf-idf
+--
 
 ## Sparsity
 
@@ -592,6 +609,7 @@ speeches_dtm <- tidy_speeches |>
   cast_dtm(document = year, term = word, value = n)
 
 lda_speeches <- LDA(speeches_dtm, k = 4, control = list(seed = 777))
+# Note that the number of topic is the results of several refinements
 
 terms(lda_speeches, k = 15)
 topics <- topics(lda_speeches)
@@ -599,3 +617,7 @@ topics[order(names(topics))]
 ```
 
 Our analysis is way better now. From the results of topic modelling it can be seen that for the Barroso presidency from 2010 to 2013, as well as for the first of Juncker's speeches in 2015, the main topic seems to be the economic and financial crisis related with the global financial crisis and the subsequent eurozone crisis. Topic n.2 is related with the pandemic (ex. digital, nextgenerationeu), as well as with Ukraine's war (ex. ukraine, energy). Topic n.2 is prevalent in 2020 and 2022, the first speeches after each of these 2 crisis unfolded. Topic n.3 is related mainly with elections, a newly found unity and defense of the rule of law and democracy. These are all topics relevant in 2017 and 2018 when the EU had come to terms with the fact that Brexit was happening and EU commission president Juncker was trying to set out a vision for the future of the post-Brexit European Union. At the same time that he was praising and highlighting the unity and commitment of the remaining EU countries, he was also warning against the worsening of the democratic conditions in some of the European states and the need to defend the rule of law, thus underlining the importance of the forthcoming 2019 European elections. Topic n.4 is probably the more general topic, grouping together several of what have been key priorities of the European Commission in the last decade. These are speeches that come at times of difficulties for the Union, but without being necessarily in the most acute part of a crisis (2016, 2021, 2023). Some of the priorities mentioned by the EU commission presidents range from global challenges such as climate change, to the need to defend the rule of law and the EU's values, to the need to invest to create jobs and have a functioning common market for EU companies. Important in these 2016, 2021 and 2023 speeches is also the concept of security which has been declined in increasingly more ways. Initially related to migrants and terrorism in 2016, the concept then expanded into an umbrella term covering also social and economic security, turning into a key priority and concept of the von der Leyen's Commission.
+
+# Conclusion
+
+-- TBW
