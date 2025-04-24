@@ -1,12 +1,19 @@
 ---
-title: "EU state of the Union"
-output: html_document
-date: ""
+title: "EU State of the Union speeches"
+subtitle: "A text mining analysis"
+date: "`r Sys.Date()`"
+author: "David Pereiro Pol, Diego Paroli"
+output:
+  rmdformats::robobook
 ---
 
 # Introduction
 
 Each September, the President of the European Commission gives a speech in the plenary session of the European Parliament about last year's achievements and presents the priorities for the next one.
+
+```{r, echo=FALSE, fig.height=5}
+knitr::include_graphics("img/soteu.jpg")
+```
 
 In this assignment we will be applying some basic text mining techniques to extract useful information from speeches comprehended between 2010 and 2023. During this period, the European Commission had three different presidents, Barroso, Juncker and von der Leyen, so we'll also be looking for similarities and differences across years and presidents. We'll perform sentiment analysis to compare positivity and negativity across speeches, we will use TF-IDF to determine the most distinctive words each year and lastly we will do topic modelling to classify the speeches depending on their theme.
 
@@ -170,7 +177,7 @@ Again here we can see how the Barroso presidency was really focused on overcomin
 
 Now we will be calculating the frequency of each word to compare the style used by these presidents. We will be comparing the speeches of von der Leyen since she is the current president to see if they differ from the previous ones.
 
-```{r}
+```{r, warning = FALSE}
 # Probably need some comments on the code below
 
 frequency <- filtered_speeches |> 
