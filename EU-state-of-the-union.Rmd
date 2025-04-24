@@ -79,7 +79,12 @@ As for most text mining pipelines, the first step is to proceed with tokenizatio
 ```{r}
 # Tokenizing by word
 tokenized_speeches <- speeches |> 
-  unnest_tokens(word,text, token="words")
+  unnest_tokens(word,text, token="words") |> 
+  # Removing possessive to end of words (ex country's becomes country)
+  mutate(word = gsub("'s$", "", word)) |> 
+  mutate(word = gsub("’s$", "", word))
+# Note that I need to remove possessive for two slightly different apostrophe
+# Because ' and ’ are different characters I need to handle them both
 
 stop_words <- stop_words
 
@@ -91,6 +96,8 @@ filtered_speeches <- tokenized_speeches |>
 # Analysis
 
 ## Word frequency
+
+### Unigrams
 
 What are the most used words in the speeches?
 
@@ -162,8 +169,6 @@ filtered_speeches |>
 
 Again here we can see how the Barroso presidency was really focused on overcoming the economic crisis. Juncker instead often made references to words of unity because his presidency was marked by the Brexit referendum and the need to protect the Union from raising nationalisms as well as finding european solutions to the refugee crisis. von der Leyen's presidency is marked by the pandemic and the war in Ukraine, two global events that are reflected in the choice of words used in her speeches.
 
--- Review
-
 Now we will be calculating the frequency of each word to compare the style used by these presidents. We will be comparing the speeches of von der Leyen since she is the current president to see if they differ from the previous ones.
 
 ```{r}
@@ -216,7 +221,40 @@ cor.test(data = frequency[frequency$president == "Juncker",],
 
 In both cases the correlation is greater than 0.79, so we have demonstrated that the word frequency used in Barroso and Juncker's speeches is quite similar to von der Leyen's. Additionally, Juncker's speech is slightly more similar to von der Leyen's than Barroso's.
 
---
+
+### Bigrams
+
+What are the most used bigrams in the speeches?
+
+```{r}
+# Keeping all bigrams that are not made up of 2 stopwords
+speeches_bigrams <- speeches |> 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2) |> 
+  separate(bigram, c("word1", "word2"), sep = " ") |>
+  filter(!(word1 %in% stop_words$word & word2 %in% stop_words$word)) |> 
+  unite("bigram", "word1", "word2", sep = " ")
+
+speeches_bigrams |> 
+  count(bigram, sort = TRUE)
+```
+
+Not much information can be extracted from this. The only interesting bigrams are "honourable members" that, as mentioned before, is the way in which the speaker addresses the audience (the member of the Euoropean Parliament), and "commission will" which suggests that the speeches often serve as a platform for the Commission to outline its plans and future actions.
+
+```{r}
+# Keeping only those where neither of the word is a stopword
+speeches_bigrams <- speeches |> 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2) |> 
+  separate(bigram, c("word1", "word2"), sep = " ") |>
+  filter(!word1 %in% stop_words$word,
+         !word2 %in% stop_words$word) |> 
+  unite("bigram", "word1", "word2", sep = " ")
+
+speeches_bigrams |> 
+  count(bigram, sort = TRUE)
+```
+
+When we filter out all the stopwords instead we see some more interesting collocations (meaningful sequence of words that co-occur more commonly in a given context than their individual word parts). Examples in our case include "climate change", a key challenge faced by the Commission, as well as "single market" and "monetary union" which are other crucial policy areas. Additionally the EU's makor institutions are frequently mentioned (ex. "european parliament", "european commission" and of course "european union").
+
 
 ## Sentiment analysis
 
@@ -353,7 +391,7 @@ filtered_speeches %>%
   arrange(desc(ratio))
 ```
 
--- Review
+-- Needs refinements
 
 The most negative year is 2013, it is the one that has a biggest ratio of negative words, in the previous graph 2015 seemed to be the most negative because it is the longest one and it is the one that has the biggest number of negative words. However, in relative terms 2013 is more negative. 
 
@@ -363,26 +401,44 @@ By looking at both graphs and the percentage of negative words by year, we can s
 
 ## TF-IDF
 
+TF-IDF helps us identify the most distinctive words in the speeches by weighing their importance relative to both their frequency within each speech and in how many speeches they appear.
+
 ```{r}
 speeches_tf_idf <- tokenized_speeches |> 
+  # Counting n. of appearances of words per year
   count(year, word, sort = TRUE) |> 
+  # Creating tf-idf
   bind_tf_idf(term = word, document = year, n = n)
 
+# Printing the words with the highest tf-idf
 speeches_tf_idf |>
-  arrange(desc(tf_idf)) 
+  arrange(desc(tf_idf)) |> 
+  print(n=20)
+```
 
+We can see that the words with the highest TF-IDF are all related to particular crisis or challenges the Union had to face. Most of the top words come from speeches delivered in the 2020s, which implies that these words are used often in recent years but were used rarely or never before. This reflects the rapid changes in the world over the past few years, marked by unexpected events and crises. An example of these changes is "ai", the word with the highest tf-idf, which was used 17 times in the 2023 speech. In particular, many of the top words belong to the 2022 speech, further emphasizing the extraordinary nature of that year with the Russian invasion of Ukraine and all the crisis connected to it. 
+
+We'll now look at the most distinctive word of each year:
+
+```{r}
 speeches_tf_idf |> 
+  # adding a column with the name of the president that delivered the speech
   mutate(president = case_when(
     year %in% c(2010, 2011, 2012, 2013) ~ "Barroso",
     year %in% c(2015, 2016, 2017, 2018) ~ "Juncker",
     year %in% c(2020, 2021, 2022, 2023) ~ "von der Leyen")) |>
   group_by(year) |> 
+  # selecting only the most distinctive word per year (highest tf-idf)
+  # if there is a tie all words are printed
   slice_max(tf_idf)
-#  efsf is European Financial Stability Facility
 ```
 
--- 
-Comment + fix europe's and country's + look at some of these words in context to understand why they were used (ex. exist, sound, parties, 2019 patriotism, surprise, cyber)
+For some of these words, it’s clear why they are the most distinctive in their respective speeches. For instance, in 2015, "refugee" stands out as the most distinctive word, as Europe was indeed in the middle of the refugee crisis at that time. In 2020, "nextgenerationeu" is the top word, as that is the name of the recovery plan that the Commission had just approved. In 2022, "ukraine" is obviously the most distinctive word, given the Russian invasion, while in 2023, "ai" is prominent due to President von der Leyen’s discussion about artificial intelligence and the AI Act. However, for some words, the interpretation is more challenging. For example, 'efsf' stands for the European Financial Stability Facility, which was frequently mentioned by President Juncker in 2011 in the context of strengthening this mechanisms established to address the sovereign debt crisis. For other words, the reasoning behind their importance and what was meant with them when used is even less clear. To help use with that in the next section we are going to add some context around them.
+
+### Key words in context
+
+--
+look at some of these words in context to understand why they were used (ex. exist, sound, parties, 2019 patriotism, surprise, cyber)
 --
 
 ## Zip's Law
@@ -537,54 +593,6 @@ p_von_der_leyen <- freq_by_rank_vonderleyen %>%
 
 Both Barroso and Juncker seem to share the same type of deviation from the standard use of language, their speeches are bellow the line in the first section, so they use a lower percentage of the most common words. Besides, in the last section the speeches do not deviate form the line, i.e. they use the same percentage of words as many other collection of language. However, despite the fact that von der Leyen's speeches also use a similar percentage of rare words and very common words, they seem to have a different behaviour in the fist section, words with a rank of 10 are above it, so we can say that von der Leyen uses more middle-low rank words than the standard use of language.
 
---
-
-## Bigrams
-
--- review
-
-Which version is more interesting?
-
-```{r}
-# Keeping all bigrams that are not 2 stopwords
-speeches_bigrams <- speeches |> 
-  unnest_tokens(bigram, text, token = "ngrams", n = 2) |> 
-  separate(bigram, c("word1", "word2"), sep = " ") |>
-  filter(!(word1 %in% stop_words$word & word2 %in% stop_words$word))
-
-# Keeping only those where neither is a stopword
-speeches_bigrams <- speeches |> 
-  unnest_tokens(bigram, text, token = "ngrams", n = 2) |> 
-  separate(bigram, c("word1", "word2"), sep = " ") |>
-  filter(!word1 %in% stop_words$word,
-         !word2 %in% stop_words$word) |> 
-  unite("bigram", "word1", "word2", sep = " ")
-```
-
-```{r}
-speeches_bigrams |> 
-  count(bigram, sort = TRUE)
-```
-
-```{r}
-bigrams_tf_idf <- speeches_bigrams |> 
-  count(year, bigram, sort = TRUE) |> 
-  bind_tf_idf(term = bigram, document = year, n = n) |> 
-  arrange(desc(tf_idf))
-bigrams_tf_idf
-```
-
---
-
-## Trigrams
-
-```{r}
-speeches_trigrams <- speeches |> 
-  unnest_tokens(bigram, text, token = "ngrams", n = 3)
-```
-
---
-Try to see if trigrams give some insights as well by loooking at their count and tf-idf
 --
 
 ## Sparsity
