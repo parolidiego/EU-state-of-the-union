@@ -28,12 +28,14 @@ rm(list = ls())
 # install.packages("topicmodels")
 # install.packages("scales")
 # install.packages("patchwork")
+# install.packages("quanteda")
 library(tidyverse)
 library(tidytext)
 library(wordcloud)
 library(topicmodels)
 library(scales)
 library(patchwork)
+library(quanteda)
 ```
 
 # Loading data
@@ -363,6 +365,8 @@ In the graphs, it seems that the speech given in the year 2015 is the most negat
 
 Surprisingly, in the year 2020 the most common sentiment was positivity, in the middle of the pandemic the president of the European Commission opted for giving a more positive speech that could bring a little bit of hope in the middle of a tragedy.
 
+By looking at both graphs, we can say that the speeches are predominantly positive. This is probably because the Commission uses these formal speeches to boast its results, communicate its new priorities and even when addressing challenges emphasize hope and highlight the progresses made. Furthermore, there doesn't appear to be a consistent pattern in the use of positive or negative sentiment. For instance, the speeches don’t seem to begin or include specific moments where negative segments are consistently introduced.
+
 ### Most negative year
 
 Now we will calculate the ratio of negative words per year to check the validity of the previous comments. 
@@ -391,8 +395,6 @@ filtered_speeches %>%
 ```
 
 The most negative year is 2013, it is the one that has a biggest ratio of negative words, in the previous graph 2015 seemed to be the most negative because it is the longest one and it is the one that has the biggest number of negative words. However, in relative terms 2013 is more negative. 
-
-By looking at both graphs and the percentage of negative words by year, we can say that the speeches are predominantly positive. This is probably because the Commission uses these formal speeches to boast its results, communicate its new priorities and even when addressing challenges emphasize hope and highlight the progresses made. Furthermore, there doesn't appear to be a consistent pattern in the use of positive or negative sentiment. For instance, the speeches don’t seem to begin or include specific moments where negative segments are consistently introduced.
 
 ## TF-IDF
 
@@ -432,9 +434,75 @@ For some of these words, it’s clear why they are the most distinctive in their
 
 ### Key words in context
 
---
-look at some of these words in context to understand why they were used (ex. exist, sound, parties, 2019 patriotism, surprise, cyber)
---
+To look at the context of words that were not clear in the previous segment, first we need to create a `{quanteda}` corpus and then apply the function `kwic` to see the phrase in which they were included.
+
+```{r}
+speeches_corpus <- corpus(speeches$text, docvars = data.frame(year = speeches$year,
+                                                              president = speeches$president))
+
+summary(speeches_corpus)
+```
+
+```{r}
+kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2010")), "exist", window = 8)
+kwic_result
+
+kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2010")), "sound", window = 8)
+kwic_result
+```
+
+In 2010 the words with highest TF-IDF were exist and sound. The former is was used in various contexts that were not very similar which does not provide us with a lot of insights, but the latter, sound, is used in relation to the establishment of more solid economic and financial policies and that makes sense in the context of the financial crisis.
+
+```{r}
+kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2012")), "parties", window = 8)
+kwic_result
+
+```
+
+In 2012, "parties" is the word at which we are looking at and it appeared in a significant rate in this speech in the context of the role of European political parties and their future candidacies for 2014's elections.
+
+```{r}
+kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2013")), "justus", window = 8)
+kwic_result
+
+kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2013")), "version", window = 8)
+kwic_result
+```
+
+In this case, the three words were highly mentioned in a small space. "Lipsius" and  "Justus" appeared together since they were referring to a building named after a 16th century humanist that was being used by Barroso to make an analogy. The word "version" was distinctive in this document and it was used to refer to what version voters will receive, supposedly in the 2014's elections.
+
+```{r}
+kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2016")), "000", window = 8)
+kwic_result
+```
+
+The reason why "000" appears as the most distinctive in 2016 is because some numbers were given during the speech and in the ones given in thousands the "000" was considered as a separate word. In fact it has a high IDF because this problem problably was not happening in the rest of the transcriptions.
+
+
+```{r}
+kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2017")), "2019", window = 8)
+kwic_result
+```
+
+During 2017's speech, "2019" was highly mentioned since it was the year in which the UK was initially supposed to abandon the European Union and it was also the year of the next Comission's election. 
+
+```{r}
+kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2018")), "patriotism", window = 8)
+kwic_result
+
+kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2018")), "surprise", window = 12)
+kwic_result
+```
+
+In 2018, the word "patriotism" was used by Juncker in opposition to "nationalism", the first was seen as something positive while the second had negative connotations. The word "surprise" was used multiple timesreferring to an agreement with Trump.
+
+```{r}
+kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2021")), "cyber", window = 8)
+kwic_result
+```
+
+Lastly, the word "cyber" was important in the year 2021 because von der Leyen was talking about cyber threads, maybe since everything became more digital due to the pandemic. In that speech she also mentioned the creation of a "Cyber Resilience Act".
+
 
 ## Zip's Law
 
