@@ -27,11 +27,13 @@ rm(list = ls())
 # install.packages("wordcloud")
 # install.packages("topicmodels")
 # install.packages("scales")
+# install.packages("patchwork")
 library(tidyverse)
 library(tidytext)
 library(wordcloud)
 library(topicmodels)
 library(scales)
+library(patchwork)
 ```
 
 # Loading data
@@ -100,7 +102,7 @@ filtered_speeches |>
   filter(n > 100) |>  
   # Plotting the most used
   ggplot(aes(n, reorder(word, n))) +
-  geom_col(fill = "blue") +
+  geom_col(fill = "#004494") +
   labs(title = "Most used words in EU State of the Union speeches 2010-2023",
        y = NULL, 
        x = "Number of times used") +
@@ -148,7 +150,7 @@ filtered_speeches |>
   group_by(president) |> 
   slice_max(n, n = 10) |> 
   ggplot(aes(n, reorder_within(word, n, president))) +
-  geom_col(fill = "blue") +
+  geom_col(fill = "#004494") +
   facet_wrap(~ president, nrow = 3, scales = "free_y") +
   scale_y_reordered() +
   labs(
@@ -192,6 +194,7 @@ ggplot(frequency, aes(x = proportion, y = `von der Leyen`,
   scale_color_gradient(limits = c(0, 0.001), 
                        low = "darkslategray4", high = "gray75") +
   facet_wrap(~president, ncol = 2) +
+  theme_minimal() + 
   theme(legend.position="none") +
   labs(y = "von der Leyen", x = NULL)
 
@@ -213,11 +216,6 @@ cor.test(data = frequency[frequency$president == "Juncker",],
 
 In both cases the correlation is greater than 0.79, so we have demonstrated that the word frequency used in Barroso and Juncker's speeches is quite similar to von der Leyen's. Additionally, Juncker's speech is slightly more similar to von der Leyen's than Barroso's.
 
-Other: correlation with phi coefficient on whether words tend to appear in the same speech? --> probably useless
---
-
--- 
-Another addition could be look at specific words frequency over time
 --
 
 ## Sentiment analysis
@@ -328,9 +326,9 @@ In the graphs, it seems that the speech given in the year 2015 is the most negat
 
 Surprisingly, in the year 2020 the most common sentiment was positivity, in the middle of the pandemic the president of the European Commission opted for giving a more positive speech that could bring a little bit of hope in the middle of a tragedy.
 
-By looking at both graphs, we can say that the speeches are predominantly positive. This is probably because the Commission uses these formal speeches to boast its results, communicate its new priorities and even when addressing challenges emphasize hope and highlight the progresses made. Furthermore, there doesn't appear to be a consistent pattern in the use of positive or negative sentiment. For instance, the speeches don’t seem to begin or include specific moments where negative segments are consistently introduced.
-
 ### Most negative year
+
+Now we will calculate the ratio of negative words per year to check the validity of the previous comments. 
 
 ```{r}
 bingnegative <- get_sentiments("bing") %>% 
@@ -357,7 +355,9 @@ filtered_speeches %>%
 
 -- Review
 
-The most negative year is 2013, it is the one that has a biggest ratio of negative words, in the previous graph 2015 seemed to be the most negative because it is the longest one and it is the one that has the biggest number of negative words. However, in relative terms 2013 is more negative. (We should comment if something particular happened in 2013, but we should also have into account that only 5% of the words are negative, all the speeches are clearly positive)
+The most negative year is 2013, it is the one that has a biggest ratio of negative words, in the previous graph 2015 seemed to be the most negative because it is the longest one and it is the one that has the biggest number of negative words. However, in relative terms 2013 is more negative. 
+
+By looking at both graphs and the percentage of negative words by year, we can say that the speeches are predominantly positive. This is probably because the Commission uses these formal speeches to boast its results, communicate its new priorities and even when addressing challenges emphasize hope and highlight the progresses made. Furthermore, there doesn't appear to be a consistent pattern in the use of positive or negative sentiment. For instance, the speeches don’t seem to begin or include specific moments where negative segments are consistently introduced.
 
 --
 
@@ -389,7 +389,9 @@ Comment + fix europe's and country's + look at some of these words in context to
 
 -- Review
 
-To calculate the slope, should we change the rank that determines the middle section? In the Juncker case, the straight line is not achieve until 50 it seems and the same happens in von der Leyen's case.
+Now we will be looking at the use that these presidents do of common and rare words. For that we will be using Zip's Law to assign a rank to each word, the lower the TF the higher the rank, because the word is more rare and valuable. 
+
+First, we'll sort the words by TF, then generate a log-log graph for each president to observe deviations from typical language patterns. We'll consider the middle section of each graph as representing standard language use, as it tends to be the most stable. To visualize this baseline, we’ll draw a reference line on each graph based on a linear regression that will extrapolate the trend of the middle section.
 
 ```{r}
 speeches_tf_idf <- speeches_tf_idf |> 
@@ -404,109 +406,136 @@ speeches_tf_idf <- speeches_tf_idf |>
 freq_by_rank_barroso <- speeches_tf_idf %>% 
   filter(president == "Barroso") |> 
   group_by(year) %>% 
-  #we create the column for the rank with row_number
   mutate(rank = row_number()) %>%
   ungroup()
 
 freq_by_rank_juncker <- speeches_tf_idf %>% 
   filter(president == "Juncker") |> 
-  group_by(year) %>% 
-  #we create the column for the rank with row_number
+  group_by(year) %>%
   mutate(rank = row_number()) %>%
   ungroup()
 
 freq_by_rank_vonderleyen <- speeches_tf_idf %>% 
   filter(president == "von der Leyen") |> 
-  group_by(year) %>% 
-  #we create the column for the rank with row_number
+  group_by(year) %>%
   mutate(rank = row_number()) %>%
   ungroup()
 
 ```
 
+We extract the line for Barroso:
+
 ```{r}
 freq_by_rank_barroso %>% 
-  ggplot(aes(rank, tf, color = year)) + 
-  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  ggplot(aes(rank, tf, color = as_factor(year))) + 
+  geom_line(linewidth = 1.1, alpha = 0.8, show.legend = FALSE) + 
   scale_x_log10() +
-  scale_y_log10()
+  scale_y_log10() + 
+  theme_minimal()
 ```
+
 
 ```{r}
 rank_subset <- freq_by_rank_barroso %>% 
   filter(rank < 500,
-         rank > 10)
+         rank > 50)
 
 #we use the linear model function to find numeric coefficients of relationship between tf and rank
 lm(log10(tf) ~ log10(rank), data = rank_subset)
 ```
 
 ```{r}
-freq_by_rank_barroso %>% 
-  ggplot(aes(rank, tf, color = year)) + 
-  #we add a line in the plot with the two coefficients we have found
-  geom_abline(intercept = -0.9407, slope = -0.9432, 
+p_barroso <- freq_by_rank_barroso %>% 
+  ggplot(aes(rank, tf, color = as_factor(year))) + 
+  #We add a line in the plot with the two coefficients we have found
+  geom_abline(intercept = -0.9672, slope = -0.9322, 
               color = "gray50", linetype = 2) +
   geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
   scale_x_log10() +
-  scale_y_log10()
+  scale_y_log10() + 
+  theme_minimal() + 
+  labs(
+    title = "Barroso"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5))
 ```
+We extract the line for Juncker:
 
 ```{r}
 freq_by_rank_juncker %>% 
-  ggplot(aes(rank, tf, color = year)) + 
+  ggplot(aes(rank, tf, color = as_factor(year))) + 
   geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
   scale_x_log10() +
-  scale_y_log10()
+  scale_y_log10() + 
+  theme_minimal()
 ```
 
 ```{r}
 rank_subset <- freq_by_rank_juncker %>% 
   filter(rank < 500,
-         rank > 10)
-
+         rank > 50)
 #we use the linear model function to find numeric coefficients of relationship between tf and rank
 lm(log10(tf) ~ log10(rank), data = rank_subset)
 ```
 
 ```{r}
-freq_by_rank_juncker %>% 
-  ggplot(aes(rank, tf, color = year)) + 
-  #we add a line in the plot with the two coefficients we have found
-  geom_abline(intercept = -0.906, slope = -0.9649, 
+p_juncker <- freq_by_rank_juncker %>% 
+  ggplot(aes(rank, tf, color = as_factor(year))) + 
+  geom_abline(intercept = -0.9038, slope = -0.9657, 
               color = "gray50", linetype = 2) +
-  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
+  geom_line(linewidth = 1.1, alpha = 0.8, show.legend = FALSE) + 
   scale_x_log10() +
-  scale_y_log10()
+  scale_y_log10() +
+  theme_minimal() + 
+  labs(
+    title = "Juncker"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5))
 ```
+We extract the line for von der Leyen:
 
 ```{r}
 freq_by_rank_vonderleyen %>% 
-  ggplot(aes(rank, tf, color = year)) + 
+  ggplot(aes(rank, tf, color = as_factor(year))) + 
   geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
   scale_x_log10() +
-  scale_y_log10()
+  scale_y_log10() + 
+  theme_minimal()
 ```
 
 ```{r}
 rank_subset <- freq_by_rank_vonderleyen %>% 
   filter(rank < 500,
-         rank > 10)
+         rank > 50)
 
-#we use the linear model function to find numeric coefficients of relationship between tf and rank
 lm(log10(tf) ~ log10(rank), data = rank_subset)
 ```
 
 ```{r}
-freq_by_rank_vonderleyen %>% 
-  ggplot(aes(rank, tf, color = year)) + 
+p_von_der_leyen <- freq_by_rank_vonderleyen %>% 
+  ggplot(aes(rank, tf, color = as_factor(year))) + 
   #we add a line in the plot with the two coefficients we have found
-  geom_abline(intercept = -0.9615, slope = -0.9467, 
+  geom_abline(intercept = -0.972, slope = -0.9422, 
               color = "gray50", linetype = 2) +
   geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
   scale_x_log10() +
-  scale_y_log10()
+  scale_y_log10() + 
+  theme_minimal() + 
+  labs(
+    title = "von der Leyen"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5))
 ```
+
+```{r, fig.width = 7, fig.height = 12}
+
+# We use the library patvhwork to display the three graphs at the same time
+(p_barroso / p_juncker / p_von_der_leyen)  +
+  plot_layout(ncol = 1,            
+              heights = c(1, 1, 1))
+```
+
+Both Barroso and Juncker seem to share the same type of deviation from the standard use of language, their speeches are bellow the line in the first section, so they use a lower percentage of the most common words. Besides, in the last section the speeches do not deviate form the line, i.e. they use the same percentage of words as many other collection of language. However, despite the fact that von der Leyen's speeches also use a similar percentage of rare words and very common words, they seem to have a different behaviour in the fist section, words with a rank of 10 are above it, so we can say that von der Leyen uses more middle-low rank words than the standard use of language.
 
 --
 
