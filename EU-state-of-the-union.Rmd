@@ -144,7 +144,6 @@ filtered_speeches |>
   slice_head(n = 1)
 ```
 
-
 This gives us more insights. For example it's clear that the focus of 2022 was the Ukraine's war, while in 2020, the Commission underlined the global dimension of the pandemic we were witnessing. "Euro", "growth" and "crisis" are instead words that characterize the speeches happening closer to the financial and Eurozone crisis. 
 
 We now turn the focus on each presidency and compare their most used words.
@@ -241,7 +240,7 @@ speeches_bigrams |>
 Not much information can be extracted from this. The only interesting bigrams are "honourable members" that, as mentioned before, is the way in which the speaker addresses the audience (the member of the Euoropean Parliament), and "commission will" which suggests that the speeches often serve as a platform for the Commission to outline its plans and future actions.
 
 ```{r}
-# Keeping only those where neither of the word is a stopword
+# Keeping bigrams where neither of the words is a stopword
 speeches_bigrams <- speeches |> 
   unnest_tokens(bigram, text, token = "ngrams", n = 2) |> 
   separate(bigram, c("word1", "word2"), sep = " ") |>
@@ -391,13 +390,9 @@ filtered_speeches %>%
   arrange(desc(ratio))
 ```
 
--- Needs refinements
-
 The most negative year is 2013, it is the one that has a biggest ratio of negative words, in the previous graph 2015 seemed to be the most negative because it is the longest one and it is the one that has the biggest number of negative words. However, in relative terms 2013 is more negative. 
 
 By looking at both graphs and the percentage of negative words by year, we can say that the speeches are predominantly positive. This is probably because the Commission uses these formal speeches to boast its results, communicate its new priorities and even when addressing challenges emphasize hope and highlight the progresses made. Furthermore, there doesn't appear to be a consistent pattern in the use of positive or negative sentiment. For instance, the speeches don’t seem to begin or include specific moments where negative segments are consistently introduced.
-
---
 
 ## TF-IDF
 
@@ -442,8 +437,6 @@ look at some of these words in context to understand why they were used (ex. exi
 --
 
 ## Zip's Law
-
--- Review
 
 Now we will be looking at the use that these presidents do of common and rare words. For that we will be using Zip's Law to assign a rank to each word, the lower the TF the higher the rank, because the word is more rare and valuable. 
 
@@ -515,6 +508,7 @@ p_barroso <- freq_by_rank_barroso %>%
   ) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
+
 We extract the line for Juncker:
 
 ```{r}
@@ -548,6 +542,7 @@ p_juncker <- freq_by_rank_juncker %>%
   ) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
+
 We extract the line for von der Leyen:
 
 ```{r}
@@ -593,9 +588,9 @@ p_von_der_leyen <- freq_by_rank_vonderleyen %>%
 
 Both Barroso and Juncker seem to share the same type of deviation from the standard use of language, their speeches are bellow the line in the first section, so they use a lower percentage of the most common words. Besides, in the last section the speeches do not deviate form the line, i.e. they use the same percentage of words as many other collection of language. However, despite the fact that von der Leyen's speeches also use a similar percentage of rare words and very common words, they seem to have a different behaviour in the fist section, words with a rank of 10 are above it, so we can say that von der Leyen uses more middle-low rank words than the standard use of language.
 
---
+## Topic modelling
 
-## Sparsity
+### Sparsity
 
 ```{r}
 speeches_dtm <- filtered_speeches |>
@@ -609,7 +604,7 @@ speeches_dtm
 
 12 speeches containing a total of 5593 different (non-stop)words. 79% percent of sparsity in our document-term matrix means that 79% of the cells in the matrix are zeros. 79% of the word-document combinations do not happen in the speeches that we have analyzed. While this sparsity might seem high, sparsity can even be much higher in other real word text data (\>90/95%). In our case, the sparsity is somewhat lower because these are political speeches made by the same institution (for several years represented by the same person), in the same context and that therefore often revolve around recurring topics. This thematic consistency reduces the number of unique, non-overlapping words across documents, making the vocabulary of the speeches across the years similar and in turn, it lowers the overall sparsity of our collection. Another factor that makes our sparsity lower is the fact that we are analyzing a relatively small number of documents (12 speeches). In larger collections, the sparsity tends to increase as the number of documents increases carrying with them new unique words.
 
-## Topic modelling
+### Topics
 
 ```{r}
 # Applying LDA with 5 topics
@@ -653,8 +648,18 @@ topics <- topics(lda_speeches)
 topics[order(names(topics))]
 ```
 
-Our analysis is way better now. From the results of topic modelling it can be seen that for the Barroso presidency from 2010 to 2013, as well as for the first of Juncker's speeches in 2015, the main topic seems to be the economic and financial crisis related with the global financial crisis and the subsequent eurozone crisis. Topic n.2 is related with the pandemic (ex. digital, nextgenerationeu), as well as with Ukraine's war (ex. ukraine, energy). Topic n.2 is prevalent in 2020 and 2022, the first speeches after each of these 2 crisis unfolded. Topic n.3 is related mainly with elections, a newly found unity and defense of the rule of law and democracy. These are all topics relevant in 2017 and 2018 when the EU had come to terms with the fact that Brexit was happening and EU commission president Juncker was trying to set out a vision for the future of the post-Brexit European Union. At the same time that he was praising and highlighting the unity and commitment of the remaining EU countries, he was also warning against the worsening of the democratic conditions in some of the European states and the need to defend the rule of law, thus underlining the importance of the forthcoming 2019 European elections. Topic n.4 is probably the more general topic, grouping together several of what have been key priorities of the European Commission in the last decade. These are speeches that come at times of difficulties for the Union, but without being necessarily in the most acute part of a crisis (2016, 2021, 2023). Some of the priorities mentioned by the EU commission presidents range from global challenges such as climate change, to the need to defend the rule of law and the EU's values, to the need to invest to create jobs and have a functioning common market for EU companies. Important in these 2016, 2021 and 2023 speeches is also the concept of security which has been declined in increasingly more ways. Initially related to migrants and terrorism in 2016, the concept then expanded into an umbrella term covering also social and economic security, turning into a key priority and concept of the von der Leyen's Commission.
+Our analysis is way better now. From the results of topic modelling it can be seen that for the Barroso presidency from 2010 to 2013, as well as for the first of Juncker's speeches in 2015, the main topic seems to be the economic and financial crisis related with the global financial crisis and the subsequent eurozone crisis. This is topic n.1.
+
+Topic n.2 is related with the pandemic (ex. digital, nextgenerationeu), as well as with Ukraine's war (ex. ukraine, energy). The topic is prevalent in 2020 and 2022, the first speeches after each of these 2 crisis unfolded.
+
+Topic n.3 is related mainly with elections, a newly found unity and defense of the rule of law and democracy. These are all topics relevant in 2017 and 2018 when the EU had come to terms with the fact that Brexit was happening and EU commission president Juncker was trying to set out a vision for the future of the post-Brexit European Union. At the same time that he was praising and highlighting the unity and commitment of the remaining EU countries, he was also warning against the worsening of the democratic conditions in some of the European states and the need to defend the rule of law, thus underlining the importance of the forthcoming 2019 European elections. 
+
+Topic n.4 is probably the more general topic, grouping together several of what have been key priorities of the European Commission in the last decade. These are speeches that come at times of difficulties for the Union, but without being necessarily in the most acute part of a crisis (2016, 2021, 2023). Some of the priorities mentioned by the EU commission presidents range from global challenges such as climate change, to the need to defend the rule of law and the EU's values, to the need to invest to create jobs and have a functioning common market for EU companies. Important in these 2016, 2021 and 2023 speeches is also the concept of security which has been declined in increasingly more ways. Initially related to migrants and terrorism in 2016, the concept then expanded into an umbrella term covering also social and economic security, turning into a key priority and concept of the von der Leyen's Commission.
 
 # Conclusion
 
--- TBW
+Our project analyzed European Commission's State of the Union speeches from 2010 to 2023 using text mining techniques. Throughout the study we were able to trace the last decade of the European Union's history and all the challenges and major events it has had to face.
+
+The main finding of our analysis is that crises such as the Eurozone debt crisis, refugee crisis, the pandemic, and the war in Ukraine are often central topics and greatly shape the discourse. TF-IDF and topic modeling revealed how these challenges influenced the vocabulary and topics of each presidency, with speeches in the early 2010s centered on economic recovery, while speeches in the 2020s focused on the pandemic and the war in Ukraine. 
+
+However, being the speeches a very formal occasion, they still tend to share a significant portion of their vocabulary and style across years and presidencies. The speeches primarily serve as a platform for the Commission to highlight legislative achievements, outline policy priorities, and address pressing challenges. Nonetheless, even in very difficult times and when addressing candidly serious issues, Commission presidents seem to ultimately always convey a message of unity and confidence in the European project resulting in neutral to fairly positive speeches.
