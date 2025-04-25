@@ -13,11 +13,11 @@ output:
 knitr::include_graphics("img/soteu.jpg")
 ```
 
-Each September, the **President of the European Commission** gives a speech in the plenary session of the European Parliament about last year's achievements and presents the priorities for the next one. Such speech is know as the **EU State of the Union** speech.
+Each September, the **President of the European Commission** gives a speech in the plenary session of the European Parliament about last year's achievements and presents the priorities for the next one. Such speech is known as the **EU State of the Union** speech.
 
 In this assignment we will be applying some basic text mining techniques to extract useful information from speeches comprehended between 2010 and 2023. During this period, the European Commission had three different presidents, Barroso, Juncker and von der Leyen, so we'll also be looking for similarities and differences across years and presidents. We'll perform **sentiment analysis** to compare positivity and negativity across speeches, we will use **TF-IDF** to determine the most distinctive words each year and lastly we will do **topic modelling** to classify the speeches depending on their theme.
 
-As an initial hypothesis we expect to have a big amount of similarities regarding the style and the words used between presidents because, although each one of them may have their particular style and some particular event to address, these type of discourses tend to follow a formal and structured scheme and consistently mention key policy areas.
+As an initial hypothesis, we expect to have a big amount of similarities regarding the style and the words used between presidents because, although each may have their particular style and some particular event to address, these type of discourses tend to follow a formal and structured scheme and consistently mention key policy areas.
 
 Moreover, in the sentiment analysis we expect to achieve greater negativity between 2010 and 2016 and in 2020-2022 because it was the period of the Eurozone debt crisis and the COVID-19 pandemic and the Ukraine war, respectively.
 
@@ -80,11 +80,11 @@ speeches <- speeches |>
     year %in% c(2020, 2021, 2022, 2023) ~ "von der Leyen"))
 ```
 
-Note that some years are missing. These years correspond to European election years, during which the Commission and the Parliament are typically in transition and not yet fully in office and thus the speech is not delivered.
+Note that years 2014 and 2019 are missing. These years correspond to European election years, during which the Commission and the Parliament are typically in transition and not yet fully in office and thus the speech is not delivered.
 
 # Pre-processing
 
-As for most text mining pipelines, the first step is to proceed with tokenization. Then, since stop words do not add useful information to our analysis we are filtering them out .
+As for most text mining pipelines, the first step is to proceed with tokenization. Then, since stop words do not add useful information to our analysis we are filtering them out.
 
 ```{r}
 # Tokenizing by word
@@ -128,7 +128,7 @@ filtered_speeches |>
 
 In a first look, we can observe that the most used words are making reference to Europe, the European Union and the Commission as well as to the European people to which these speeches are directed. Other words refer to key policy areas mainly related with the economy.
 
-A curious presence is the word `honourable`. Its presence is due to the fact that all Commission presidents to address the members of the European Parliament, where the speech takes place, use the expression "Honourable Members" (of the parliament). This expression is used repeatedly, often as the opening of several sentences or at least of each section of the speech.
+A curious presence is the word `honourable`. Its presence is due to the fact that all Commission presidents use the expression "Honourable Members" (of the parliament) to address the members of the European Parliament, where the speech takes place. This expression is used repeatedly, often as the opening of several sentences or at least of each section of the speech.
 
 We'll now focus on differences across years and presidents.
 
@@ -180,7 +180,7 @@ filtered_speeches |>
 
 Again here we can see how the Barroso presidency was really focused on overcoming the economic crisis. Juncker instead often made references to words of unity because his presidency was marked by the Brexit referendum and the need to protect the Union from raising nationalisms as well as finding European solutions to the refugee crisis. von der Leyen's presidency is marked by the pandemic and the war in Ukraine, two global events that are reflected in the choice of words used in her speeches.
 
-Now we will be calculating the frequency of each word to compare the style used by these presidents. We will be comparing the speeches of von der Leyen since she is the current president to see if they differ from the previous ones.
+Now we will be calculating the frequency of each word to compare the style used by these presidents. We will be using von der Leyen's speeches as reference since she is the current president, to see if they differ from the previous ones.
 
 ```{r, warning = FALSE}
 # Calculate word frequency proportions by president
@@ -296,9 +296,9 @@ filtered_speeches |>
   slice_head(n = 10)
 ```
 
-On the other hand `Bing` labels as positives words that deal with stability, solidarity and strengthening and reforming the Union.
+On the other hand, `Bing` labels as positives words that deal with stability, solidarity and strengthening and reforming the Union.
 
-We'll now focus instead on emotion detection, looking in particular at fear and disgust. For this we'll use another lexicon called `nrc`. First we'll look at the most common words related with fear and then we'll look at the most common words related with disgust.
+We'll now focus instead on emotion detection, looking in particular at fear and disgust. For this we'll use another lexicon called `nrc`. First, we'll look at the most common words related with fear and then we'll look at the most common words related with disgust.
 
 ```{r}
 # Fear
@@ -443,7 +443,7 @@ speeches_tf_idf |>
   slice_max(tf_idf)
 ```
 
-For some of these words, it’s clear why they are the most distinctive in their respective speeches. For instance, in 2015, `refugee` stands out as the most distinctive word, as Europe was indeed in the middle of the refugee crisis at that time. In 2020, `nextgenerationeu` is the top word, as that is the name of the recovery plan that the Commission had just approved. In 2022, `ukraine` is obviously the most distinctive word, given the Russian invasion, while in 2023, `ai` is prominent due to President von der Leyen’s discussion about artificial intelligence and the AI Act. However, for some words, the interpretation is more challenging. For example, 'efsf' stands for the European Financial Stability Facility, which was frequently mentioned by President Juncker in 2011 in the context of strengthening this mechanisms established to address the sovereign debt crisis. For other words, the reason behind their importance and what was meant with them when used is even less clear. To help use with that in the next section we are going to add some context around them.
+For some of these words, it’s clear why they are the most distinctive in their respective speeches. For instance, in 2015, `refugee` stands out as the most distinctive word, as Europe was indeed in the middle of the refugee crisis at that time. In 2020, `nextgenerationeu` is the top word, as that is the name of the recovery plan that the Commission had just approved. In 2022, `ukraine` is obviously the most distinctive word, given the Russian invasion, while in 2023, `ai` is prominent due to President von der Leyen’s discussion about artificial intelligence and the AI Act. However, for some words, the interpretation is more challenging. For example, 'efsf' stands for the European Financial Stability Facility, which was frequently mentioned by President Barroso in 2011 in the context of strengthening this mechanisms established to address the sovereign debt crisis. For other words, the reason behind their importance and what was meant with them when used is even less clear. To help use with that in the next section we are going to add some context around them.
 
 ### Key words in context
 
@@ -498,7 +498,7 @@ kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2016")),
 kwic_result
 ```
 
-The reason why `000` appears as the most distinctive in 2016 is because some numbers were given during the speech and in the ones given in thousands the `000` was considered as a separate word. In fact it has a high IDF because this problem problably was not happening in the rest of the transcriptions.
+The reason why `000` appears as the most distinctive in 2016 is because some numbers were given during the speech and in the ones given in thousands the `000` was considered as a separate word. In fact, it has a high IDF because this problem problably was not happening in the rest of the transcriptions.
 
 ```{r}
 kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2017")),
@@ -526,7 +526,7 @@ kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2021")),
 kwic_result
 ```
 
-Lastly, the word `cyber` stood out in 2021 because President von der Leyen talked about the growing cyber threats and the need for the EU to defend from them (cyberdefense), all this is also likley linked to a context of increasing digitalization during the pandemic. In this speech the Commission President also mentions the creation of a "Cyber Resilience Act".
+Lastly, the word `cyber` stood out in 2021 because President von der Leyen talked about the growing cyber threats and the need for the EU to defend from them (cyberdefense), all this is also likely linked to a context of increasing digitalization during the pandemic. In this speech the Commission President also mentions the creation of a "Cyber Resilience Act".
 
 ## Zipf's Law
 
@@ -588,7 +588,7 @@ lm(log10(tf) ~ log10(rank), data = rank_subset)
 p_barroso <- freq_by_rank_barroso %>% 
   ggplot(aes(rank, tf, color = as_factor(year))) + 
   #We add a line in the plot with the two coefficients we have found
-  geom_abline(intercept = -0.9672, slope = -0.9322, 
+  geom_abline(intercept = -0.9514, slope = -0.9393, 
               color = "gray50", linetype = 2) +
   geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
   scale_x_log10() +
@@ -622,7 +622,7 @@ lm(log10(tf) ~ log10(rank), data = rank_subset)
 ```{r, warning=FALSE}
 p_juncker <- freq_by_rank_juncker %>% 
   ggplot(aes(rank, tf, color = as_factor(year))) + 
-  geom_abline(intercept = -0.9038, slope = -0.9657, 
+  geom_abline(intercept = -0.9024, slope = -0.9666, 
               color = "gray50", linetype = 2) +
   geom_line(linewidth = 1.1, alpha = 0.8, show.legend = FALSE) + 
   scale_x_log10() +
@@ -657,7 +657,7 @@ lm(log10(tf) ~ log10(rank), data = rank_subset)
 p_von_der_leyen <- freq_by_rank_vonderleyen %>% 
   ggplot(aes(rank, tf, color = as_factor(year))) + 
   #we add a line in the plot with the two coefficients we have found
-  geom_abline(intercept = -0.972, slope = -0.9422, 
+  geom_abline(intercept = -0.9549, slope = -0.9498, 
               color = "gray50", linetype = 2) +
   geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
   scale_x_log10() +
@@ -677,7 +677,7 @@ p_von_der_leyen <- freq_by_rank_vonderleyen %>%
               heights = c(1, 1, 1))
 ```
 
-Both Barroso and Juncker seem to share the same type of deviation from the standard use of language, their speeches are bellow the line in the first section, so they use a lower percentage of the most common words. Besides, in the last section the speeches do not deviate form the line, i.e. they use the same percentage of words as many other collection of language. However, despite the fact that von der Leyen's speeches also use a similar percentage of rare words and very common words, they seem to have a different behaviour in the fist section, words with a rank of 10 are above it, so we can say that von der Leyen uses more middle-low rank words than the standard use of language.
+Both Barroso and Juncker seem to share the same type of deviation from the standard use of language, their speeches are bellow the line in the first section, so they use a lower percentage of the most common words. Besides, in the last section the speeches do not deviate form the line, i.e. they use the same percentage of words as many other collections of language. However, despite the fact that von der Leyen's speeches also use a similar percentage of rare words and very common words, they seem to have a different behaviour in the fist section, words with a rank of 10 are above it, so we can say that von der Leyen uses more middle-low rank words than the standard use of language.
 
 ## Topic modelling
 
@@ -709,7 +709,7 @@ lda_speeches <- LDA(speeches_dtm, k = 4, control = list(seed = 777))
 terms(lda_speeches, k = 10)
 ```
 
-As can be seen from the results above, most of the top terms are common across all topics. This is probably due to the fact that these are also the most frequent words in the speeches and thus can be found in all topics. To improve this situation I will get rid of them by building a custom stop words list.
+As can be seen from the results above, most of the top terms are common across all topics. This is probably due to the fact that these are also the most frequent words in the speeches and thus can be found in all topics. To improve this situation we will get rid of them by building a custom stop words list.
 
 ```{r}
 # Custom stop words
