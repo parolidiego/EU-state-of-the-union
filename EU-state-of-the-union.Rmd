@@ -128,7 +128,7 @@ filtered_speeches |>
 
 In a first look, we can observe that the most used words are making reference to Europe, the European Union and the Commission as well as to the European people to which these speeches are directed. Other words refer to key policy areas mainly related with the economy.
 
-A curious presence is the word "honourable". Its presence is due to the fact that all Commission presidents to address the members of the European Parliament, where the speech takes place, use the expression "Honourable Members" (of the parliament). This expression is used repeatedly, often as the opening of several sentences or at least of each section of the speech.
+A curious presence is the word `honourable`. Its presence is due to the fact that all Commission presidents to address the members of the European Parliament, where the speech takes place, use the expression "Honourable Members" (of the parliament). This expression is used repeatedly, often as the opening of several sentences or at least of each section of the speech.
 
 We'll now focus on differences across years and presidents.
 
@@ -141,7 +141,7 @@ filtered_speeches |>
   slice_head(n = 1)
 ```
 
-We can see that "europe" or "european" are constantly the most used word every year.
+We can see that `europe` or `european` are constantly the most used word every year.
 
 What happens if instead we filter out these standard words. Which ones become the most used?
 
@@ -155,7 +155,7 @@ filtered_speeches |>
   slice_head(n = 1)
 ```
 
-This gives us more insights. For example it's clear that the focus of 2022 was the Ukraine's war, while in 2020, the Commission underlined the global dimension of the pandemic we were witnessing. future" was the most used word in 2017, in a speech which discussed heavily the path forward for the Union in the wake of the Brexit shock. "euro", "growth" and "crisis" are instead words that characterize the speeches happening closer to the financial and Eurozone crisis.
+This gives us more insights. For example it's clear that the focus of 2022 was the Ukraine's war, while in 2020, the Commission underlined the global dimension of the pandemic we were witnessing. `future` was the most used word in 2017, in a speech which discussed heavily the path forward for the Union in the wake of the Brexit shock. `euro`, `growth` and `crisis` are instead words that characterize the speeches happening closer to the financial and Eurozone crisis.
 
 We now turn the focus on each presidency and compare their most used words.
 
@@ -219,7 +219,7 @@ ggplot(frequency, aes(x = proportion, y = `von der Leyen`,
   labs(y = "von der Leyen", x = NULL)
 ```
 
-By looking at the graph we can observe that word frequency is quite similar between von der Leyen and the previous presidents. However, we must say that since in Barroso and Juncker's presidencies the economic situation was the principal concern words like "economic", "euro", "monetary" or "debt" had a highest frequency than in von der Layen's presidency.
+By looking at the graph we can observe that word frequency is quite similar between von der Leyen and the previous presidents. However, we must say that since in Barroso and Juncker's presidencies the economic situation was the principal concern words like `economic`, `euro`, `monetary` or `debt` had a highest frequency than in von der Layen's presidency.
 
 To check from a quantitative perspective if the style of the speeches are truly similar we are going to calculate the Pearson correlation coefficient.
 
@@ -251,7 +251,7 @@ speeches_bigrams |>
   count(bigram, sort = TRUE)
 ```
 
-Not much information can be extracted from this. The only interesting bigrams are "honourable members" that, as mentioned before, is the way in which the speaker addresses the audience (the member of the Euoropean Parliament), and "commission will" which suggests that the speeches often serve as a platform for the Commission to outline its plans and future actions.
+Not much information can be extracted from this. The only interesting bigrams are `honourable members` that, as mentioned before, is the way in which the speaker addresses the audience (the member of the Euoropean Parliament), and `commission will` which suggests that the speeches often serve as a platform for the Commission to outline its plans and future actions.
 
 ```{r}
 # Keeping bigrams where neither of the words is a stopword
@@ -266,7 +266,7 @@ speeches_bigrams |>
   count(bigram, sort = TRUE)
 ```
 
-When we filter out all the stopwords instead we see some more interesting collocations (meaningful sequence of words that co-occur more commonly in a given context than their individual word parts). Examples in our case include "climate change", a key challenge faced by the Commission, as well as "single market" and "monetary union" which are other crucial policy areas. Additionally the EU's major institutions are frequently mentioned (ex. "european parliament", "european commission" and of course "european union").
+When we filter out all the stopwords instead we see some more interesting collocations (meaningful sequence of words that co-occur more commonly in a given context than their individual word parts). Examples in our case include `climate change`, a key challenge faced by the Commission, as well as `single market` and `monetary union` which are other crucial policy areas. Additionally the EU's major institutions are frequently mentioned (ex. `european parliament`, `european commission` and of course `european union`).
 
 ## Sentiment analysis
 
@@ -285,7 +285,7 @@ filtered_speeches |>
   slice_head(n = 10)
 ```
 
-The most used words that are labelled as negative by the `Bing` lexicon are all related with some of the problems that the Union had to face in the last decade. The most used word is "crisis", which is not surprising since the speeches were given in a period of time where the Union was indeed facing several crises.
+The most used words that are labelled as negative by the `Bing` lexicon are all related with some of the problems that the Union had to face in the last decade. The most used word is `crisis`, which is not surprising since the speeches were given in a period of time where the Union was indeed facing several crises.
 
 ```{r}
 # Most common positive words by bing
@@ -312,7 +312,7 @@ filtered_speeches |>
   slice_head(n = 10)
 ```
 
-Most of the above words can indeed be related to fear as they recall negative scary things that have happened (ex. Ukraine's war, pandemic, asylum crisis) or that could potentially happen ("risk", "urgent", "change").
+Most of the above words can indeed be related to fear as they recall negative scary things that have happened (ex. Ukraine's war, pandemic, asylum crisis) or that could potentially happen (`risk`, `urgent`, `change`).
 
 ```{r}
 # Disgust
@@ -325,7 +325,7 @@ filtered_speeches |>
   slice_head(n = 10)
 ```
 
-While some of the above words make sense (such as "terrorism", "poverty", "corruption"), other words are not that clear. For example, the association between "weight" and disgust, or "honest" and disgust, is unclear and questionable. These mismatches further highlight the limitations and the difficulties of using pre-defined lexicons for emotion detection and of single-word sentiment analysis in general.
+While some of the above words make sense (such as `terrorism`, `poverty`, `corruption`), other words are not that clear. For example, the association between `weight` and disgust, or `honest` and disgust, is unclear and questionable. These mismatches further highlight the limitations and the difficulties of using pre-defined lexicons for emotion detection and of single-word sentiment analysis in general.
 
 ### Do the speeches have a similar structure related to positivity and negativity?
 
@@ -426,7 +426,7 @@ speeches_tf_idf |>
   print(n=20)
 ```
 
-We can see that the words with the highest TF-IDF are all related to particular crisis or challenges the Union had to face. Most of the top words come from speeches delivered in the 2020s, which implies that these words are used often in recent years but were used rarely or never before. This reflects the rapid changes in the world over the past few years, marked by unexpected events and crises. An example of these changes is "ai", the word with the highest tf-idf, which was used 17 times in the 2023 speech. In particular, many of the top words belong to the 2022 speech, further emphasizing the extraordinary nature of that year with the Russian invasion of Ukraine and all the crisis connected to it.
+We can see that the words with the highest TF-IDF are all related to particular crisis or challenges the Union had to face. Most of the top words come from speeches delivered in the 2020s, which implies that these words are used often in recent years but were used rarely or never before. This reflects the rapid changes in the world over the past few years, marked by unexpected events and crises. An example of these changes is `ai`, the word with the highest tf-idf, which was used 17 times in the 2023 speech. In particular, many of the top words belong to the 2022 speech, further emphasizing the extraordinary nature of that year with the Russian invasion of Ukraine and all the crisis connected to it.
 
 We'll now look at the most distinctive word of each year:
 
@@ -443,7 +443,7 @@ speeches_tf_idf |>
   slice_max(tf_idf)
 ```
 
-For some of these words, it’s clear why they are the most distinctive in their respective speeches. For instance, in 2015, "refugee" stands out as the most distinctive word, as Europe was indeed in the middle of the refugee crisis at that time. In 2020, "nextgenerationeu" is the top word, as that is the name of the recovery plan that the Commission had just approved. In 2022, "ukraine" is obviously the most distinctive word, given the Russian invasion, while in 2023, "ai" is prominent due to President von der Leyen’s discussion about artificial intelligence and the AI Act. However, for some words, the interpretation is more challenging. For example, 'efsf' stands for the European Financial Stability Facility, which was frequently mentioned by President Juncker in 2011 in the context of strengthening this mechanisms established to address the sovereign debt crisis. For other words, the reason behind their importance and what was meant with them when used is even less clear. To help use with that in the next section we are going to add some context around them.
+For some of these words, it’s clear why they are the most distinctive in their respective speeches. For instance, in 2015, `refugee` stands out as the most distinctive word, as Europe was indeed in the middle of the refugee crisis at that time. In 2020, `nextgenerationeu` is the top word, as that is the name of the recovery plan that the Commission had just approved. In 2022, `ukraine` is obviously the most distinctive word, given the Russian invasion, while in 2023, `ai` is prominent due to President von der Leyen’s discussion about artificial intelligence and the AI Act. However, for some words, the interpretation is more challenging. For example, 'efsf' stands for the European Financial Stability Facility, which was frequently mentioned by President Juncker in 2011 in the context of strengthening this mechanisms established to address the sovereign debt crisis. For other words, the reason behind their importance and what was meant with them when used is even less clear. To help use with that in the next section we are going to add some context around them.
 
 ### Key words in context
 
@@ -470,7 +470,7 @@ kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2010")),
 kwic_result
 ```
 
-In 2010 the words with highest TF-IDF were "exist" and "sound". The former was used in various contexts that were not very similar and do not provide us with a lot of insights, but the latter, "sound", is used in relation to the establishment of more solid economic and financial policies and this makes sense in the context of the financial crisis.
+In 2010 the words with highest TF-IDF were `exist` and `sound`. The former was used in various contexts that were not very similar and do not provide us with a lot of insights, but the latter, `sound`, is used in relation to the establishment of more solid economic and financial policies and this makes sense in the context of the financial crisis.
 
 ```{r}
 kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2012")),
@@ -478,7 +478,7 @@ kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2012")),
 kwic_result
 ```
 
-In 2012, "parties" is the word at which we are looking at and it appeared in a significant rate in this speech in the context of the role of European political parties and their future candidacies for 2014's elections.
+In 2012, `parties` is the word at which we are looking at and it appeared in a significant rate in this speech in the context of the role of European political parties and their future candidacies for 2014's elections.
 
 ```{r}
 kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2013")),
@@ -490,7 +490,7 @@ kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2013")),
 kwic_result
 ```
 
-In this case, the three words were highly mentioned in a small space. "lipsius" and "justus" appeared together since they were referring to a building named after a 16th century humanist that was being used by Barroso to make an analogy. The word "version" was distinctive in this document and it was used to refer to what version of reality voters would receive, supposedly from political parties while campaigning for the 2014's elections.
+In this case, the three words were highly mentioned in a small space. `lipsius` and `justus` appeared together since they were referring to a building named after a 16th century humanist that was being used by Barroso to make an analogy. The word `version` was distinctive in this document and it was used to refer to what version of reality voters would receive, supposedly from political parties while campaigning for the 2014's elections.
 
 ```{r}
 kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2016")),
@@ -498,7 +498,7 @@ kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2016")),
 kwic_result
 ```
 
-The reason why "000" appears as the most distinctive in 2016 is because some numbers were given during the speech and in the ones given in thousands the "000" was considered as a separate word. In fact it has a high IDF because this problem problably was not happening in the rest of the transcriptions.
+The reason why `000` appears as the most distinctive in 2016 is because some numbers were given during the speech and in the ones given in thousands the `000` was considered as a separate word. In fact it has a high IDF because this problem problably was not happening in the rest of the transcriptions.
 
 ```{r}
 kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2017")),
@@ -506,7 +506,7 @@ kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2017")),
 kwic_result
 ```
 
-During 2017's speech, "2019" was highly mentioned since it was the year in which the UK was initially supposed to abandon the European Union and it was also the year of the next European elections.
+During 2017's speech, `2019` was highly mentioned since it was the year in which the UK was initially supposed to abandon the European Union and it was also the year of the next European elections.
 
 ```{r}
 kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2018")),
@@ -518,14 +518,15 @@ kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2018")),
 kwic_result
 ```
 
-In 2018, the word "patriotism" was used by Juncker in opposition to nationalism, the first was seen as something positive while the second having negative connotations. These were times of rising nationalism and anti-europeism all over the Union, therefore it makes sense that the President would address such topics with the elections coming up within the next year. The word "surprise" was used multiple times referring to an agreement with Trump, likely a trade agreement, that some politicians or Member States had not believed would be possible to reach.
+In 2018, the word `patriotism` was used by Juncker in opposition to nationalism, the first was seen as something positive while the second having negative connotations. These were times of rising nationalism and anti-europeism all over the Union, therefore it makes sense that the President would address such topics with the elections coming up within the next year. The word `surprise` was used multiple times referring to an agreement with Trump, likely a trade agreement, that some politicians or Member States had not believed would be possible to reach.
 
 ```{r}
-kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2021")), "cyber", window = 8)
+kwic_result <- kwic(tokens(corpus_subset(speeches_corpus, year == "2021")),
+                    "cyber", window = 8)
 kwic_result
 ```
 
-Lastly, the word "cyber" stood out in 2021 because President von der Leyen talked about the growing cyber threats and the need for the EU to defend from them (cyberdefense), all this is also likley linked to a context of increasing digitalization during the pandemic. In this speech the Commission President also mentions the creation of a "Cyber Resilience Act".
+Lastly, the word `cyber` stood out in 2021 because President von der Leyen talked about the growing cyber threats and the need for the EU to defend from them (cyberdefense), all this is also likley linked to a context of increasing digitalization during the pandemic. In this speech the Commission President also mentions the creation of a "Cyber Resilience Act".
 
 ## Zipf's Law
 
